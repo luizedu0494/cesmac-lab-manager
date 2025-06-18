@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Gerenciar Períodos de Recesso</h2>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Adicionar Novo Recesso
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('main.novo_recesso') }}">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="motivo" class="form-label">Motivo</label>
+                        <input type="text" class="form-control" id="motivo" name="motivo" placeholder="Ex: Férias de Julho" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="data_inicio" class="form-label">Data de Início</label>
+                        <input type="date" class="form-control" id="data_inicio" name="data_inicio" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="data_fim" class="form-label">Data de Fim</label>
+                        <input type="date" class="form-control" id="data_fim" name="data_fim" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary mt-3">Adicionar Recesso</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            Recessos Cadastrados
+        </div>
+        <div class="card-body">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th scope="col">Motivo</th>
+                        <th scope="col">Início</th>
+                        <th scope="col">Fim</th>
+                        <th scope="col">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for recesso in recessos %}
+                    <tr>
+                        <td>{{ recesso.motivo }}</td>
+                        <td>{{ recesso.data_inicio.strftime('%d/%m/%Y') }}</td>
+                        <td>{{ recesso.data_fim.strftime('%d/%m/%Y') }}</td>
+                        <td>
+                            <form method="POST" action="{{ url_for('main.deletar_recesso', recesso_id=recesso.id) }}" onsubmit="return confirm('Tem certeza que deseja excluir este período de recesso?');">
+                                <button type="submit" class="btn btn-danger btn-sm">Excluir</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center">Nenhum período de recesso cadastrado.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

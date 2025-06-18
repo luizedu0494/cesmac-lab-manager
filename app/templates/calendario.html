@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="main-container" class="container-fluid" data-user-role="{{ user_role }}">
+    <h2 class="mb-4">Calendário de Agendamentos</h2>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form id="filtroForm" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label for="filtro-texto" class="form-label">Buscar por Título</label>
+                    <input type="text" class="form-control" id="filtro-texto" placeholder="Digite uma palavra-chave...">
+                </div>
+                <div class="col-md-3">
+                    <label for="filtro-lab" class="form-label">Laboratório</label>
+                    <select id="filtro-lab" class="form-select">
+                        <option value="" selected>Todos os Laboratórios</option>
+                        {% for lab in laboratorios %}
+                            <option value="{{ lab.id }}">{{ lab.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="filtro-status" class="form-label">Status</label>
+                    <select id="filtro-status" class="form-select">
+                        <option value="" selected>Todos os Status</option>
+                        <option value="Pendente">Pendente</option>
+                        <option value="Aprovada">Aprovada</option>
+                        <option value="Rejeitada">Rejeitada</option>
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">Filtrar</button>
+                    <button type="button" class="btn btn-secondary me-2" id="btnLimparFiltros">Limpar</button>
+                    {% if g.user.role == 'Coordenador' %}
+                    <a href="#" class="btn btn-success" id="btnExportar">Exportar para Excel</a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <div id="calendar"></div>
+</div>
+
+<a href="#" id="fab-novo-agendamento" class="fab" title="Novo Agendamento">
+    <i class="bi bi-plus-lg"></i>
+</a>
+
+
+<div class="modal fade" id="modalAgendamento" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalLabel">Novo Agendamento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formAgendamento">
+                    <input type="hidden" id="agendamento_id" name="agendamento_id">
+                    <div class="mb-3">
+                        <label for="titulo" class="form-label">Título da Aula/Evento</label>
+                        <input type="text" class="form-control" id="titulo" name="titulo" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="data" class="form-label">Data</label>
+                        <input type="date" class="form-control" id="data" name="data" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="laboratorio" class="form-label">Laboratório</label>
+                        <select class="form-select" id="laboratorio" name="laboratorio" required>
+                            <option selected disabled value="">Selecione um laboratório...</option>
+                            {% for lab in laboratorios %}
+                                <option value="{{ lab.id }}">{{ lab.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="horario" class="form-label">Horário</label>
+                        <select class="form-select" id="horario" name="horario" required>
+                            <option selected disabled value="">Selecione um horário...</option>
+                            {% for horario in horarios %}
+                                <option value="{{ horario.value }}">{{ horario.label }} ({{ horario.turno }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div id="secao-atribuicao" style="display: none;">
+                        <hr>
+                        <p class="mb-2"><strong>Atribuir para:</strong></p>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tipo_atribuicao" id="atribuir_user" value="user" checked>
+                            <label class="form-check-label" for="atribuir_user">Indivíduo</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="tipo_atribuicao" id="atribuir_group" value="group">
+                            <label class="form-check-label" for="atribuir_group">Grupo</label>
+                        </div>
+
+                        <div id="bloco_atribuicao_user" class="mt-2">
+                             <select class="form-select" name="atribuido_user_id">
+                                <option value="" selected disabled>Selecione um técnico...</option>
+                                {% for tecnico in tecnicos %}
+                                    <option value="{{ tecnico.display_name }}">{{ tecnico.display_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div id="bloco_atribuicao_grupo" class="mt-2" style="display: none;">
+                            <select class="form-select" name="atribuido_grupo_id">
+                                <option value="" selected disabled>Selecione um grupo...</option>
+                                {% for grupo in grupos %}
+                                    <option value="{{ grupo.id }}">{{ grupo.nome }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <hr>
+                    </div>
+                    
+                     <div class="mb-3" id="infoSolicitante" style="display: none;">
+                        <strong>Solicitante:</strong> <span id="solicitanteNome"></span>
+                    </div>
+                    <div class="mb-3" id="infoAtribuicao" style="display: none;">
+                        <strong>Atribuído para:</strong> <span id="atribuidoNome"></span>
+                    </div>
+
+                    <div class="form-check" id="secao-manter-dados">
+                        <input class="form-check-input" type="checkbox" value="" id="manterDados">
+                        <label class="form-check-label" for="manterDados">
+                            Manter informações para o próximo agendamento
+                        </label>
+                    </div>
+
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-danger" id="btnRejeitar" style="display: none;">Rejeitar</button>
+                <button type="button" class="btn btn-success" id="btnAprovar" style="display: none;">Aprovar</button>
+                <button type="submit" class="btn btn-primary" id="btnSalvar" form="formAgendamento">Salvar Agendamento</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-center align-items-center" style="height: 80vh;">
+    <div class="text-center">
+        <img src="{{ url_for('static', filename='images/cesmac-logo.png') }}" alt="Logo do CESMAC" class="mb-4" style="max-width: 300px;">
+        
+        <h1>Sistema de Agendamento de Laboratórios</h1>
+        <p class="lead">Por favor, faça login para continuar.</p>
+        <a href="{{ url_for('main.auth_google') }}" class="btn btn-primary btn-lg">
+            <img src="https://developers.google.com/identity/images/g-logo.png" width="20" class="me-2">
+            Login com Google
+        </a>
+    </div>
+</div>
+{% endblock %}

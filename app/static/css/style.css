@@ -1,0 +1,113 @@
+/* :root define as variáveis para o tema claro (padrão) */
+:root {
+    --bs-body-bg: #f8f9fa;
+    --bs-body-color: #212529;
+    --bs-secondary-bg: #e9ecef;
+    --bs-tertiary-bg: #ffffff;
+    --bs-border-color: #dee2e6;
+    --bs-link-color-rgb: 0, 123, 255;
+    --fc-border-color: #ddd;
+    --fc-day-bg: #fff;
+    --fc-list-even-bg: #f7f7f7;
+}
+
+/* Redefine as mesmas variáveis para o tema escuro */
+[data-bs-theme="dark"] {
+    --bs-body-bg: #212529;
+    --bs-body-color: #dee2e6;
+    --bs-secondary-bg: #343a40;
+    --bs-tertiary-bg: #2c3034;
+    --bs-border-color: #495057;
+    --bs-link-color-rgb: 13, 202, 240;
+    --fc-border-color: #495057;
+    --fc-day-bg: #2c3034;
+    --fc-list-even-bg: #343a40;
+}
+
+/* Aplica transição suave para uma melhor experiência */
+body, .card, .modal-content, .list-group-item, .accordion-item, .form-control, .form-select {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* --- ESTILO PARA O BOTÃO FLUTUANTE (FAB) --- */
+.fab {
+    position: fixed;
+    width: 60px;
+    height: 60px;
+    bottom: 40px;
+    right: 40px;
+    background-color: #0d6efd; /* Cor primária do Bootstrap */
+    color: white;
+    border-radius: 50%;
+    text-align: center;
+    box-shadow: 2px 2px 3px #999;
+    z-index: 1000; /* Garante que fique sobre outros elementos */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    text-decoration: none;
+}
+
+.fab:hover {
+    background-color: #0b5ed7; /* Cor um pouco mais escura ao passar o mouse */
+    color: white;
+}
+
+
+/* --- REGRAS ESPECÍFICAS PARA COMPONENTES NO MODO ESCURO --- */
+
+[data-bs-theme="dark"] .card,
+[data-bs-theme="dark"] .modal-content,
+[data-bs-theme="dark"] .list-group-item,
+[data-bs-theme="dark"] .accordion-item {
+    background-color: var(--bs-tertiary-bg);
+    color: var(--bs-body-color);
+}
+
+[data-bs-theme="dark"] .card-header,
+[data-bs-theme="dark"] .modal-header,
+[data-bs-theme="dark"] .card-footer,
+[data-bs-theme="dark"] .modal-footer {
+    background-color: var(--bs-secondary-bg);
+    border-color: var(--bs-border-color);
+}
+
+[data-bs-theme="dark"] .accordion-button {
+    background-color: var(--bs-tertiary-bg);
+    color: var(--bs-body-color);
+}
+[data-bs-theme="dark"] .accordion-button:not(.collapsed) {
+    background-color: #0d6efd;
+    color: white;
+}
+[data-bs-theme="dark"] .accordion-button::after {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+[data-bs-theme="dark"] .form-control,
+[data-bs-theme="dark"] .form-select {
+    background-color: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+    border-color: var(--bs-border-color);
+}
+[data-bs-theme="dark"] .form-control:focus,
+[data-bs-theme="dark"] .form-select:focus {
+    background-color: var(--bs-secondary-bg);
+    color: var(--bs-body-color);
+    border-color: #86b7fe;
+}
+
+[data-bs-theme="dark"] .table-striped > tbody > tr:nth-of-type(odd) > * {
+    --bs-table-accent-bg: rgba(255, 255, 255, 0.05);
+}
+
+[data-bs-theme="dark"] .fc-daygrid-day-number, 
+[data-bs-theme="dark"] .fc-col-header-cell-cushion,
+[data-bs-theme="dark"] .fc-list-day-text,
+[data-bs-theme="dark"] .fc-list-day-side-text {
+    color: var(--bs-body-color) !important;
+}
+[data-bs-theme="dark"] .fc-day-today {
+    background-color: rgba(255, 220, 40, 0.15) !important;
+}

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Mural de Avisos</h2>
+    </div>
+
+    {% if session.user_role == 'Coordenador' %}
+    <div class="card mb-4">
+        <div class="card-header">
+            Publicar Novo Aviso
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('main.mural_de_avisos') }}">
+                <div class="mb-3">
+                    <label for="titulo" class="form-label">Título</label>
+                    <input type="text" class="form-control" id="titulo" name="titulo" required>
+                </div>
+                <div class="mb-3">
+                    <label for="conteudo" class="form-label">Conteúdo do Aviso</label>
+                    <textarea class="form-control" id="conteudo" name="conteudo" rows="3" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Publicar Aviso</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if avisos %}
+        {% for aviso in avisos %}
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <h5 class="card-title">{{ aviso.titulo }}</h5>
+                    {% if session.user_role == 'Coordenador' %}
+                    <form method="POST" action="{{ url_for('main.deletar_aviso', aviso_id=aviso.id) }}" onsubmit="return confirm('Tem certeza que deseja excluir este aviso?');">
+                        <button type="submit" class="btn-close" aria-label="Excluir"></button>
+                    </form>
+                    {% endif %}
+                </div>
+                <p class="card-text">{{ aviso.conteudo|safe }}</p>
+            </div>
+            <div class="card-footer text-muted">
+                Publicado por {{ aviso.autor.name }} em {{ aviso.timestamp_criacao.strftime('%d/%m/%Y às %H:%M') }}
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="text-center">
+            <p>Nenhum aviso publicado no momento.</p>
+        </div>
+    {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Minhas Tarefas e Agendamentos</h2>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('main.minhas_tarefas') }}" class="row g-3 align-items-end">
+                <div class="col-md-6">
+                    <label for="filtro_texto" class="form-label">Buscar por Título</label>
+                    <input type="text" class="form-control" id="filtro_texto" name="filtro_texto" value="{{ request.args.get('filtro_texto', '') }}" placeholder="Digite uma palavra-chave...">
+                </div>
+                <div class="col-md-4">
+                    <label for="filtro_status" class="form-label">Status</label>
+                    <select id="filtro_status" name="filtro_status" class="form-select">
+                        <option value="" {% if not request.args.get('filtro_status') %}selected{% endif %}>Todos os Status</option>
+                        <option value="Pendente" {% if request.args.get('filtro_status') == 'Pendente' %}selected{% endif %}>Pendente</option>
+                        <option value="Aprovada" {% if request.args.get('filtro_status') == 'Aprovada' %}selected{% endif %}>Aprovada</option>
+                        <option value="Rejeitada" {% if request.args.get('filtro_status') == 'Rejeitada' %}selected{% endif %}>Rejeitada</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped table-hover">
+            <thead>
+                <tr>
+                    <th scope="col">Data</th>
+                    <th scope="col">Horário</th>
+                    <th scope="col">Título</th>
+                    <th scope="col">Laboratório</th>
+                    <th scope="col">Atribuído a</th>
+                    <th scope="col">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for agendamento in agendamentos %}
+                <tr>
+                    <td>{{ agendamento.data.strftime('%d/%m/%Y') }}</td>
+                    <td>{{ agendamento.horario_bloco }}</td>
+                    <td>{{ agendamento.titulo }}</td>
+                    <td>{{ agendamento.laboratorio_nome }}</td>
+                    <td>
+                        {% if agendamento.grupo_atribuido %}
+                            Grupo: {{ agendamento.grupo_atribuido.nome }}
+                        {% else %}
+                            Individual
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% set status_class = 'bg-secondary' %}
+                        {% if agendamento.status == 'Pendente' %}
+                            {% set status_class = 'text-bg-warning' %}
+                        {% elif agendamento.status == 'Aprovada' %}
+                            {% set status_class = 'text-bg-success' %}
+                        {% elif agendamento.status == 'Rejeitada' %}
+                            {% set status_class = 'text-bg-danger' %}
+                        {% endif %}
+                        <span class="badge {{ status_class }}">{{ agendamento.status }}</span>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center">Nenhuma tarefa encontrada para os filtros selecionados.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

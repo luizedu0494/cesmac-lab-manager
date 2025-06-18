@@ -1,0 +1,15 @@
+# Arquivo de segredos
+.env
+
+# Pasta do ambiente virtual
+venv/
+
+# Arquivos de cache do Python
+__pycache__/
+*.pyc
+
+# Banco de dados local
+site.db
+
+# Pasta de migrações (para não enviar ao git, será recriada no servidor)
+migrations/

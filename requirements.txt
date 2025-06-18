@@ -1,0 +1,27 @@
+# Framework e Banco de Dados
+Flask
+Flask-SQLAlchemy
+
+# Gerenciamento de Migrações do Banco de Dados
+Flask-Migrate
+
+# Formulários e Segurança
+Flask-WTF
+email-validator
+
+# Autenticação Google (OAuth)
+Authlib
+requests
+
+# Gerenciamento de Variáveis de Ambiente
+python-dotenv
+
+# Relatórios e Exportação para Excel
+pandas
+openpyxl
+
+# Lógica de Feriados
+holidays
+
+# Servidor de Produção WSGI
+gunicorn

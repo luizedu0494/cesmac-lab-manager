@@ -11,5 +11,4 @@ __pycache__/
 # Banco de dados local
 site.db
 
-# Pasta de migrações (para não enviar ao git, será recriada no servidor)
-migrations/
+

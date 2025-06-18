@@ -1,13 +1,14 @@
 from flask import g, render_template, redirect, url_for, session, flash, Blueprint, jsonify, request, send_file
 from . import db, oauth
 from .models import User, Agendamento, Recesso, Aviso, Grupo
-from .config_data import EMAILS_COORDENADORES, LISTA_LABORATORIOS, BLOCOS_HORARIO
+from .config_data import EMAILS_COORDENADORES, EMAILS_TECNICOS, LISTA_LABORATORIOS, BLOCOS_HORARIO
 import secrets
 from datetime import datetime, timedelta, date
 import holidays 
 import pandas as pd
 import io
-from sqlalchemy import or_
+from sqlalchemy import or_, func
+import json
 
 main_bp = Blueprint('main', __name__)
 
@@ -82,19 +83,14 @@ def auth_callback():
     user_email = user_info.get('email')
     user_google_id = user_info.get('sub')
 
-    # --- LÓGICA DE LOGIN DINÂMICA ---
     user = User.query.filter_by(google_id=user_google_id).first()
 
     if user:
-        # Usuário já existe, apenas atualiza nome/foto e usa o perfil do banco
         user.name = user_info.get('name')
         user.picture = user_info.get('picture')
-        role = user.role # Pega o perfil que já está no banco
+        role = user.role
     else:
-        # Usuário novo, cadastra com perfil padrão
         role = 'Não Autorizado'
-        # VERIFICAÇÃO DE SEGURANÇA: Se o email estiver na lista de coordenadores, ele ganha o perfil.
-        # Isso garante que o primeiro admin possa entrar.
         if user_email in EMAILS_COORDENADORES:
             role = 'Coordenador'
         
@@ -103,7 +99,7 @@ def auth_callback():
             email=user_email,
             name=user_info.get('name'),
             picture=user_info.get('picture'),
-            role=role # Salva com o perfil padrão ou de Coordenador
+            role=role
         )
         db.session.add(user)
     
@@ -171,7 +167,12 @@ def minhas_tarefas():
     query = Agendamento.query
     if g.user.role != 'Coordenador':
         grupo_ids = [grupo.id for grupo in g.user.grupos]
-        query = query.filter(or_(Agendamento.user_id == g.user.id, Agendamento.grupo_id.in_(grupo_ids)))
+        query = query.filter(
+            or_(
+                Agendamento.user_id == g.user.id,
+                Agendamento.grupo_id.in_(grupo_ids)
+            )
+        )
 
     filtro_texto = request.args.get('filtro_texto')
     if filtro_texto:
@@ -201,7 +202,6 @@ def atualizar_perfil(user_id):
         flash('Ação não permitida.', 'danger')
         return redirect(url_for('main.index'))
     
-    # Impede que um coordenador altere seu próprio perfil por esta rota
     if g.user.id == user_id:
         flash('Você não pode alterar seu próprio perfil aqui.', 'warning')
         return redirect(url_for('main.gerenciar_usuarios'))
@@ -263,6 +263,9 @@ def deletar_recesso(recesso_id):
 def mural_de_avisos():
     if g.user is None:
         return redirect(url_for('main.login'))
+    if g.user.role == 'Não Autorizado':
+        flash('Você não tem permissão para acessar esta página.', 'danger')
+        return redirect(url_for('main.index'))
 
     if request.method == 'POST':
         if g.user.role != 'Coordenador':
@@ -295,6 +298,12 @@ def deletar_aviso(aviso_id):
     db.session.commit()
     flash('Aviso excluído com sucesso.', 'success')
     return redirect(url_for('main.mural_de_avisos'))
+
+@main_bp.route('/ajuda')
+def ajuda():
+    if g.user is None:
+        return redirect(url_for('main.login'))
+    return render_template('ajuda.html')
 
 @main_bp.route('/grupos', methods=['GET'])
 def gerenciar_grupos():

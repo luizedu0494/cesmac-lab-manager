@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Gerenciar Usuários</h2>
+
+    <div class="card">
+        <div class="card-header">
+            Usuários Cadastrados
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th scope="col">Nome</th>
+                            <th scope="col">Email</th>
+                            <th scope="col">Perfil Atual</th>
+                            <th scope="col" style="width: 250px;">Mudar Perfil Para</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for usuario in usuarios %}
+                        <tr>
+                            <td>{{ usuario.display_name }}</td>
+                            <td>{{ usuario.email }}</td>
+                            <td>
+                                {% set status_class = 'bg-secondary' %}
+                                {% if usuario.role == 'Coordenador' %}
+                                    {% set status_class = 'bg-primary' %}
+                                {% elif usuario.role == 'Técnico' %}
+                                    {% set status_class = 'bg-info' %}
+                                {% endif %}
+                                <span class="badge {{ status_class }}">{{ usuario.role }}</span>
+                            </td>
+                            <td>
+                                {% if usuario.id != g.user.id %}
+                                <form method="POST" action="{{ url_for('main.atualizar_perfil', user_id=usuario.id) }}" class="d-flex">
+                                    <select name="novo_perfil" class="form-select form-select-sm me-2">
+                                        <option value="Técnico" {% if usuario.role == 'Técnico' %}selected{% endif %}>Técnico</option>
+                                        <option value="Coordenador" {% if usuario.role == 'Coordenador' %}selected{% endif %}>Coordenador</option>
+                                        <option value="Não Autorizado">Não Autorizado</option>
+                                    </select>
+                                    <button type="submit" class="btn btn-success btn-sm">Salvar</button>
+                                </form>
+                                {% else %}
+                                <span class="text-muted fst-italic">Você não pode alterar seu próprio perfil aqui.</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

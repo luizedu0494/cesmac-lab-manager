@@ -1,14 +1,13 @@
 from flask import g, render_template, redirect, url_for, session, flash, Blueprint, jsonify, request, send_file
 from . import db, oauth
 from .models import User, Agendamento, Recesso, Aviso, Grupo
-from .config_data import EMAILS_COORDENADORES, EMAILS_TECNICOS, LISTA_LABORATORIOS, BLOCOS_HORARIO
+from .config_data import EMAILS_COORDENADORES, LISTA_LABORATORIOS, BLOCOS_HORARIO
 import secrets
 from datetime import datetime, timedelta, date
 import holidays 
 import pandas as pd
 import io
-from sqlalchemy import or_, func # Importa a função func para contagem
-import json # Importa json para passar dados para o template
+from sqlalchemy import or_
 
 main_bp = Blueprint('main', __name__)
 
@@ -31,12 +30,10 @@ def index():
     dashboard_data = {}
 
     if g.user.role == 'Coordenador':
-        # Cards de estatísticas
         dashboard_data['pendentes_count'] = Agendamento.query.filter_by(status='Pendente').count()
         dashboard_data['aprovados_hoje_count'] = Agendamento.query.filter_by(status='Aprovada', data=today).count()
         dashboard_data['tecnicos_count'] = User.query.filter_by(role='Técnico').count()
         
-        # Dados para o gráfico de utilização de laboratórios
         utilizacao_labs = db.session.query(
             Agendamento.laboratorio_nome, 
             func.count(Agendamento.id)
@@ -58,7 +55,6 @@ def index():
         
     return render_template('index.html', dashboard=dashboard_data)
 
-# ... (O resto do arquivo continua exatamente igual, sem nenhuma omissão) ...
 @main_bp.route('/login')
 def login():
     return render_template('login.html')
@@ -83,35 +79,39 @@ def auth_callback():
         flash('Ocorreu um erro durante a autenticação. Tente novamente.', 'danger')
         return redirect(url_for('main.login'))
 
-    user_email = user_info['email']
-    user_google_id = user_info['sub']
+    user_email = user_info.get('email')
+    user_google_id = user_info.get('sub')
 
-    role = 'Não Autorizado'
-    if user_email in EMAILS_COORDENADORES:
-        role = 'Coordenador'
-    elif user_email in EMAILS_TECNICOS:
-        role = 'Técnico'
-    
-    if role == 'Não Autorizado':
-        flash('Seu e-mail não tem permissão para acessar este sistema.', 'danger')
-        return redirect(url_for('main.login'))
-
+    # --- LÓGICA DE LOGIN DINÂMICA ---
     user = User.query.filter_by(google_id=user_google_id).first()
+
     if user:
-        user.name = user_info['name']
+        # Usuário já existe, apenas atualiza nome/foto e usa o perfil do banco
+        user.name = user_info.get('name')
         user.picture = user_info.get('picture')
-        user.role = role
+        role = user.role # Pega o perfil que já está no banco
     else:
+        # Usuário novo, cadastra com perfil padrão
+        role = 'Não Autorizado'
+        # VERIFICAÇÃO DE SEGURANÇA: Se o email estiver na lista de coordenadores, ele ganha o perfil.
+        # Isso garante que o primeiro admin possa entrar.
+        if user_email in EMAILS_COORDENADORES:
+            role = 'Coordenador'
+        
         user = User(
             google_id=user_google_id,
             email=user_email,
-            name=user_info['name'],
+            name=user_info.get('name'),
             picture=user_info.get('picture'),
-            role=role
+            role=role # Salva com o perfil padrão ou de Coordenador
         )
         db.session.add(user)
     
     db.session.commit()
+
+    if user.role == 'Não Autorizado':
+        flash('Sua conta foi criada, mas aguarda autorização de um coordenador.', 'warning')
+        return redirect(url_for('main.login'))
 
     session.clear()
     session['user_id'] = user.id
@@ -147,6 +147,9 @@ def perfil():
 def calendario():
     if g.user is None: 
         return redirect(url_for('main.login'))
+    if g.user.role == 'Não Autorizado':
+        flash('Você não tem permissão para acessar esta página.', 'danger')
+        return redirect(url_for('main.index'))
     
     tecnicos = User.query.filter_by(role='Técnico').all()
     grupos = Grupo.query.all()
@@ -161,17 +164,14 @@ def calendario():
 def minhas_tarefas():
     if g.user is None:
         return redirect(url_for('main.login'))
-    
+    if g.user.role == 'Não Autorizado':
+        flash('Você não tem permissão para acessar esta página.', 'danger')
+        return redirect(url_for('main.index'))
+
     query = Agendamento.query
-    
     if g.user.role != 'Coordenador':
         grupo_ids = [grupo.id for grupo in g.user.grupos]
-        query = query.filter(
-            or_(
-                Agendamento.user_id == g.user.id,
-                Agendamento.grupo_id.in_(grupo_ids)
-            )
-        )
+        query = query.filter(or_(Agendamento.user_id == g.user.id, Agendamento.grupo_id.in_(grupo_ids)))
 
     filtro_texto = request.args.get('filtro_texto')
     if filtro_texto:
@@ -182,8 +182,41 @@ def minhas_tarefas():
         query = query.filter_by(status=filtro_status)
 
     agendamentos = query.order_by(Agendamento.data.desc()).all()
-
     return render_template('minhas_tarefas.html', agendamentos=agendamentos)
+
+# --- ROTAS DE GERENCIAMENTO (COORDENADOR) ---
+
+@main_bp.route('/gerenciar-usuarios', methods=['GET'])
+def gerenciar_usuarios():
+    if g.user is None or g.user.role != 'Coordenador':
+        flash('Acesso não permitido.', 'danger')
+        return redirect(url_for('main.index'))
+    
+    usuarios = User.query.order_by(User.name).all()
+    return render_template('gerenciar_usuarios.html', usuarios=usuarios)
+
+@main_bp.route('/usuario/atualizar-perfil/<int:user_id>', methods=['POST'])
+def atualizar_perfil(user_id):
+    if g.user is None or g.user.role != 'Coordenador':
+        flash('Ação não permitida.', 'danger')
+        return redirect(url_for('main.index'))
+    
+    # Impede que um coordenador altere seu próprio perfil por esta rota
+    if g.user.id == user_id:
+        flash('Você não pode alterar seu próprio perfil aqui.', 'warning')
+        return redirect(url_for('main.gerenciar_usuarios'))
+
+    user_para_atualizar = User.query.get_or_404(user_id)
+    novo_perfil = request.form.get('novo_perfil')
+
+    if novo_perfil in ['Coordenador', 'Técnico', 'Não Autorizado']:
+        user_para_atualizar.role = novo_perfil
+        db.session.commit()
+        flash(f'O perfil de {user_para_atualizar.display_name} foi atualizado para {novo_perfil}.', 'success')
+    else:
+        flash('Perfil inválido selecionado.', 'danger')
+    
+    return redirect(url_for('main.gerenciar_usuarios'))
 
 
 @main_bp.route('/recessos', methods=['GET'])
@@ -262,12 +295,6 @@ def deletar_aviso(aviso_id):
     db.session.commit()
     flash('Aviso excluído com sucesso.', 'success')
     return redirect(url_for('main.mural_de_avisos'))
-
-@main_bp.route('/ajuda')
-def ajuda():
-    if g.user is None:
-        return redirect(url_for('main.login'))
-    return render_template('ajuda.html')
 
 @main_bp.route('/grupos', methods=['GET'])
 def gerenciar_grupos():

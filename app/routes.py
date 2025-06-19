@@ -185,6 +185,7 @@ def minhas_tarefas():
     agendamentos = query.order_by(Agendamento.data.desc()).all()
     return render_template('minhas_tarefas.html', agendamentos=agendamentos)
 
+
 @main_bp.route('/gerenciar-usuarios', methods=['GET'])
 def gerenciar_usuarios():
     if g.user is None or g.user.role != 'Coordenador':
@@ -215,6 +216,7 @@ def atualizar_perfil(user_id):
         flash('Perfil inválido selecionado.', 'danger')
     
     return redirect(url_for('main.gerenciar_usuarios'))
+
 
 @main_bp.route('/recessos', methods=['GET', 'POST'])
 def gerenciar_recessos():
@@ -359,6 +361,7 @@ def deletar_grupo(grupo_id):
     flash(f'Grupo "{grupo.nome}" excluído com sucesso.', 'success')
     return redirect(url_for('main.gerenciar_grupos'))
 
+
 @main_bp.route('/agendamento/novo', methods=['POST'])
 def novo_agendamento():
     if g.user is None: return jsonify({'error': 'Não autorizado'}), 401
@@ -381,11 +384,16 @@ def novo_agendamento():
     user_id_atribuido = None
     grupo_id_atribuido = None
 
+    # LÓGICA DE ATRIBUIÇÃO CORRIGIDA E MAIS ROBUSTA
     if g.user.role == 'Coordenador':
         if tipo_atribuicao == 'user':
-            user_id_atribuido = dados.get('atribuido_user_id')
+            user_id_str = dados.get('atribuido_user_id')
+            if user_id_str: # Garante que não é um valor vazio
+                user_id_atribuido = int(user_id_str)
         elif tipo_atribuicao == 'group':
-            grupo_id_atribuido = dados.get('atribuido_grupo_id')
+            grupo_id_str = dados.get('atribuido_grupo_id')
+            if grupo_id_str: # Garante que não é um valor vazio
+                grupo_id_atribuido = int(grupo_id_str)
     else: 
         user_id_atribuido = g.user.id
     
@@ -521,6 +529,7 @@ def download_template():
     if g.user is None or g.user.role != 'Coordenador':
         return redirect(url_for('main.index'))
     return send_file('static/downloads/template_agendamentos.xlsx', as_attachment=True)
+
 
 @main_bp.route('/api/ajuda-chat', methods=['POST'])
 def ajuda_chat():

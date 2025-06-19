@@ -7,7 +7,6 @@ if ('serviceWorker' in navigator) {
 
 document.addEventListener('DOMContentLoaded', function() {
     
-    // Lógica do Modo Noturno (Dark Mode)
     const themeToggle = document.getElementById('theme-toggle');
     if (themeToggle) {
         const currentTheme = localStorage.getItem('theme') || 'light';
@@ -34,15 +33,16 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Lógica da Página de Ajuda/FAQ
     const faqSearch = document.getElementById('faq-search');
     if (faqSearch) {
         faqSearch.addEventListener('keyup', function() {
             const searchTerm = this.value.toLowerCase();
             const faqItems = document.querySelectorAll('.faq-item');
+
             faqItems.forEach(function(item) {
                 const questionText = item.querySelector('.accordion-button').textContent.toLowerCase();
                 const answerText = item.querySelector('.accordion-body').textContent.toLowerCase();
+                
                 if (questionText.includes(searchTerm) || answerText.includes(searchTerm)) {
                     item.style.display = 'block';
                 } else {
@@ -51,14 +51,11 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
-    
-    // LÓGICA DO GRÁFICO DO DASHBOARD (MODIFICADA)
+
     const chartCanvas = document.getElementById('labChart');
     if (chartCanvas) {
-        // Pega os dados dos atributos data-* do canvas
-        const labels = JSON.parse(chartCanvas.dataset.labels);
-        const values = JSON.parse(chartCanvas.dataset.values);
-
+        const labels = JSON.parse(chartCanvas.dataset.labels || '[]');
+        const values = JSON.parse(chartCanvas.dataset.values || '[]');
         const ctx = chartCanvas.getContext('2d');
         new Chart(ctx, {
             type: 'bar',
@@ -77,7 +74,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     y: {
                         beginAtZero: true,
                         ticks: {
-                            // Garante que o eixo Y só mostre números inteiros
                             stepSize: 1
                         }
                     }
@@ -88,10 +84,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Lógica Específica da Página do Calendário
     var calendarEl = document.getElementById('calendar');
     if (calendarEl) {
-        // Todo o código do calendário continua aqui, sem nenhuma alteração
+        
         var modalAgendamentoEl = document.getElementById('modalAgendamento');
         var modalAgendamento = new bootstrap.Modal(modalAgendamentoEl);
         var formAgendamento = document.getElementById('formAgendamento');
@@ -308,6 +303,46 @@ document.addEventListener('DOMContentLoaded', function() {
                     Swal.fire('Rejeitado!', data.message, 'warning');
                     calendar.refetchEvents();
                 }
+            });
+        });
+    }
+
+    const chatForm = document.getElementById('chat-form');
+    if (chatForm) {
+        const chatWindow = document.getElementById('chat-window');
+        const chatInput = document.getElementById('chat-input');
+        chatForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const userQuestion = chatInput.value.trim();
+            if (userQuestion === '') return;
+            chatWindow.innerHTML += `<div class="d-flex flex-row justify-content-end mb-4 user-message"><div class="p-3 me-3 border" style="border-radius: 15px;"><p class="small mb-0">${userQuestion}</p></div></div>`;
+            chatInput.value = '';
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            const thinkingId = 'thinking-' + Date.now();
+            chatWindow.innerHTML += `<div class="d-flex flex-row justify-content-start mb-4 ai-message" id="${thinkingId}"><div class="p-3 ms-3" style="border-radius: 15px; background-color: rgba(52, 58, 64, 0.1);"><p class="small mb-0"><i>Pensando...</i></p></div></div>`;
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            fetch('/api/ajuda-chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question: userQuestion })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const thinkingIndicator = document.getElementById(thinkingId);
+                if (thinkingIndicator) {
+                    thinkingIndicator.remove();
+                }
+                chatWindow.innerHTML += `<div class="d-flex flex-row justify-content-start mb-4 ai-message"><div class="p-3 ms-3" style="border-radius: 15px; background-color: rgba(52, 58, 64, 0.1);"><p class="small mb-0">${data.answer}</p></div></div>`;
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            })
+            .catch(error => {
+                const thinkingIndicator = document.getElementById(thinkingId);
+                if (thinkingIndicator) {
+                    thinkingIndicator.remove();
+                }
+                console.error("Erro no chat:", error);
+                chatWindow.innerHTML += `<div class="d-flex flex-row justify-content-start mb-4 ai-message"><div class="p-3 ms-3 bg-danger text-white" style="border-radius: 15px;"><p class="small mb-0">Desculpe, não consegui obter uma resposta. Verifique o console ou os logs do servidor.</p></div></div>`;
+                chatWindow.scrollTop = chatWindow.scrollHeight;
             });
         });
     }

@@ -16,6 +16,12 @@ requests
 # Envio de E-mail
 Flask-Mail
 
+# --- BIBLIOTECAS DE IA ---
+langchain
+langchain-google-genai
+langchain-community
+faiss-cpu
+
 # Gerenciamento de Variáveis de Ambiente
 python-dotenv
 

@@ -3,10 +3,10 @@
     --bs-body-bg: #f8f9fa;
     --bs-body-color: #212529;
     --bs-secondary-bg: #e9ecef;
-    --bs-tertiary-bg: #ffffff;
+    --bs-tertiary-bg: #ffffff; 
     --bs-border-color: #dee2e6;
     --bs-link-color-rgb: 0, 123, 255;
-    --fc-border-color: #ddd;
+    --fc-border-color: #ddd; 
     --fc-day-bg: #fff;
     --fc-list-even-bg: #f7f7f7;
 }
@@ -29,19 +29,19 @@ body, .card, .modal-content, .list-group-item, .accordion-item, .form-control, .
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
 }
 
-/* --- ESTILO PARA O BOTÃO FLUTUANTE (FAB) --- */
+/* Estilo para o Botão Flutuante (FAB) */
 .fab {
     position: fixed;
     width: 60px;
     height: 60px;
     bottom: 40px;
     right: 40px;
-    background-color: #0d6efd; /* Cor primária do Bootstrap */
+    background-color: #0d6efd; 
     color: white;
     border-radius: 50%;
     text-align: center;
     box-shadow: 2px 2px 3px #999;
-    z-index: 1000; /* Garante que fique sobre outros elementos */
+    z-index: 1000; 
     display: flex;
     align-items: center;
     justify-content: center;
@@ -50,12 +50,21 @@ body, .card, .modal-content, .list-group-item, .accordion-item, .form-control, .
 }
 
 .fab:hover {
-    background-color: #0b5ed7; /* Cor um pouco mais escura ao passar o mouse */
+    background-color: #0b5ed7; 
     color: white;
 }
 
+/* --- NOVO ESTILO PARA O BADGE DE "+ MAIS" --- */
+.fc-more-link-badge {
+    background-color: #0d6efd; /* Cor primária do Bootstrap */
+    color: white;
+    padding: 3px 8px;
+    border-radius: 12px; /* Deixa bem arredondado */
+    font-size: 0.8em;
+    font-weight: bold;
+}
 
-/* --- REGRAS ESPECÍFICAS PARA COMPONENTES NO MODO ESCURO --- */
+/* Regras Específicas para Componentes no Modo Escuro */
 
 [data-bs-theme="dark"] .card,
 [data-bs-theme="dark"] .modal-content,

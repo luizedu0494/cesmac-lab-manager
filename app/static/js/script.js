@@ -169,9 +169,10 @@ document.addEventListener('DOMContentLoaded', function() {
             buttonText: { today: 'Hoje', month: 'Mês', week: 'Semana', day: 'Dia' },
             dayMaxEvents: true, 
             
-            // --- MUDANÇA PARA O BADGE COMPACTO ---
+            // --- CUSTOMIZAÇÃO VISUAL DO INDICADOR "+ MAIS" ---
             moreLinkContent: function(args) {
-                return `<span class="badge rounded-pill bg-primary">+${args.num}</span>`;
+                // Retorna um HTML customizado com uma classe CSS que podemos estilizar
+                return `<span class="fc-more-link-badge">+${args.num}</span>`;
             },
             
             eventSources: [

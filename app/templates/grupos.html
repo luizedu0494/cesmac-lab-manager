@@ -9,7 +9,7 @@
             Criar Novo Grupo
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ url_for('main.novo_grupo') }}" class="row g-3">
+            <form method="POST" action="{{ url_for('main.gerenciar_grupos') }}" class="row g-3">
                 <div class="col-md-9">
                     <label for="nome_grupo" class="visually-hidden">Nome do Grupo</label>
                     <input type="text" class="form-control" id="nome_grupo" name="nome_grupo" placeholder="Digite o nome do novo grupo" required>
@@ -36,7 +36,7 @@
                 <ul class="list-group mb-3">
                     {% for membro in grupo.membros %}
                     <li class="list-group-item d-flex justify-content-between align-items-center">
-                        {{ membro.name }} ({{ membro.email }})
+                        {{ membro.display_name }} ({{ membro.email }})
                         <form method="POST" action="{{ url_for('main.remover_membro', grupo_id=grupo.id, user_id=membro.id) }}">
                             <button type="submit" class="btn btn-warning btn-sm">Remover</button>
                         </form>
@@ -52,7 +52,9 @@
                         <select class="form-select" name="user_id" required>
                             <option selected disabled value="">Selecione um técnico...</option>
                             {% for tecnico in tecnicos %}
-                                <option value="{{ tecnico.id }}">{{ tecnico.name }}</option>
+                                {% if tecnico not in grupo.membros %}
+                                <option value="{{ tecnico.id }}">{{ tecnico.display_name }}</option>
+                                {% endif %}
                             {% endfor %}
                         </select>
                     </div>

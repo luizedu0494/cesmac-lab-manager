@@ -9,7 +9,7 @@ import pandas as pd
 import io
 from sqlalchemy import or_, func
 import json
-from . import chatbot
+from . import faq_search
 
 main_bp = Blueprint('main', __name__)
 
@@ -41,8 +41,8 @@ def index():
             func.count(Agendamento.id)
         ).group_by(Agendamento.laboratorio_nome).order_by(func.count(Agendamento.id).desc()).limit(7).all()
 
-        dashboard_data['chart_labels'] = [item[0] for item in utilizacao_labs]
-        dashboard_data['chart_values'] = [item[1] for item in utilizacao_labs]
+        dashboard_data['chart_labels'] = json.dumps([item[0] for item in utilizacao_labs])
+        dashboard_data['chart_values'] = json.dumps([item[1] for item in utilizacao_labs])
 
     elif g.user.role == 'Técnico':
         grupo_ids = [grupo.id for grupo in g.user.grupos]
@@ -56,31 +56,6 @@ def index():
         ).order_by(Agendamento.data.asc()).limit(5).all()
         
     return render_template('index.html', dashboard=dashboard_data)
-
-@main_bp.route('/teste-email')
-def teste_email():
-    if g.user is None or g.user.role != 'Coordenador':
-        flash('Acesso não permitido.', 'danger')
-        return redirect(url_for('main.index'))
-    
-    agendamento_teste = {
-        'titulo': 'Aula Teste de Envio de E-mail',
-        'data': date.today() + timedelta(days=1),
-        'horario_bloco': '10:00 - 12:00',
-        'laboratorio_nome': 'Laboratório de Testes'
-    }
-
-    send_email(
-        to=g.user.email,
-        subject='E-mail de Teste - Sistema CESMAC Lab',
-        template='email/lembrete.html',
-        nome_usuario=g.user.display_name,
-        agendamento=agendamento_teste
-    )
-    
-    flash('E-mail de teste enviado! Verifique sua caixa de entrada (e spam).', 'info')
-    return redirect(url_for('main.index'))
-
 
 @main_bp.route('/login')
 def login():
@@ -240,6 +215,7 @@ def atualizar_perfil(user_id):
         flash('Perfil inválido selecionado.', 'danger')
     
     return redirect(url_for('main.gerenciar_usuarios'))
+
 
 @main_bp.route('/recessos', methods=['GET', 'POST'])
 def gerenciar_recessos():
@@ -549,6 +525,19 @@ def download_template():
     return send_file('static/downloads/template_agendamentos.xlsx', as_attachment=True)
 
 
+@main_bp.route('/api/ajuda-chat', methods=['POST'])
+def ajuda_chat():
+    if g.user is None:
+        return jsonify({'answer': 'Erro: você precisa estar logado para usar o chat.'}), 401
+    
+    question = request.json.get('question')
+    if not question:
+        return jsonify({'answer': 'Erro: nenhuma pergunta foi enviada.'}), 400
+
+    answer = faq_search.find_best_faq_answer(question)
+    
+    return jsonify({'answer': answer})
+
 @main_bp.route('/api/agendamentos')
 def api_agendamentos():
     if g.user is None: return jsonify({'error': 'Não autorizado'}), 401
@@ -656,16 +645,3 @@ def exportar_relatorio():
         as_attachment=True,
         download_name=f'relatorio_agendamentos_{datetime.now().strftime("%Y-%m-%d")}.xlsx'
     )
-
-@main_bp.route('/api/ajuda-chat', methods=['POST'])
-def ajuda_chat():
-    if g.user is None:
-        return jsonify({'answer': 'Erro: você precisa estar logado para usar o chat.'}), 401
-    
-    question = request.json.get('question')
-    if not question:
-        return jsonify({'answer': 'Erro: nenhuma pergunta foi enviada.'}), 400
-
-    answer = chatbot.get_faq_answer(question)
-    
-    return jsonify({'answer': answer})

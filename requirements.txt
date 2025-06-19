@@ -13,13 +13,9 @@ email-validator
 Authlib
 requests
 
-# Envio de E-mail
-Flask-Mail
-
-# --- BIBLIOTECAS DE IA ---
-langchain
-langchain-google-genai
-langchain-community
+# --- NOVA BIBLIOTECA DE BUSCA INTELIGENTE ---
+thefuzz
+python-Levenshtein
 
 # Gerenciamento de Variáveis de Ambiente
 python-dotenv

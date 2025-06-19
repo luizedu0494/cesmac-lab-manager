@@ -216,7 +216,6 @@ def atualizar_perfil(user_id):
     
     return redirect(url_for('main.gerenciar_usuarios'))
 
-
 @main_bp.route('/recessos', methods=['GET', 'POST'])
 def gerenciar_recessos():
     if g.user is None or g.user.role != 'Coordenador':
@@ -359,7 +358,6 @@ def deletar_grupo(grupo_id):
     db.session.commit()
     flash(f'Grupo "{grupo.nome}" excluído com sucesso.', 'success')
     return redirect(url_for('main.gerenciar_grupos'))
-
 
 @main_bp.route('/agendamento/novo', methods=['POST'])
 def novo_agendamento():
@@ -524,7 +522,6 @@ def download_template():
         return redirect(url_for('main.index'))
     return send_file('static/downloads/template_agendamentos.xlsx', as_attachment=True)
 
-
 @main_bp.route('/api/ajuda-chat', methods=['POST'])
 def ajuda_chat():
     if g.user is None:
@@ -537,6 +534,25 @@ def ajuda_chat():
     answer = faq_search.find_best_faq_answer(question)
     
     return jsonify({'answer': answer})
+
+@main_bp.route('/agendamento/aprovar/<int:agendamento_id>', methods=['POST'])
+def aprovar_agendamento(agendamento_id):
+    if g.user is None or g.user.role != 'Coordenador': return jsonify({'error': 'Ação não permitida'}), 403
+    
+    agendamento = Agendamento.query.get_or_404(agendamento_id)
+    agendamento.status = 'Aprovada'
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'Agendamento aprovado!'})
+
+@main_bp.route('/agendamento/rejeitar/<int:agendamento_id>', methods=['POST'])
+def rejeitar_agendamento(agendamento_id):
+    if g.user is None or g.user.role != 'Coordenador': return jsonify({'error': 'Ação não permitida'}), 403
+    
+    agendamento = Agendamento.query.get_or_404(agendamento_id)
+    agendamento.status = 'Rejeitada'
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'Agendamento rejeitado.'})
+
 
 @main_bp.route('/api/agendamentos')
 def api_agendamentos():

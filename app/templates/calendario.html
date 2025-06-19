@@ -101,7 +101,7 @@
                              <select class="form-select" name="atribuido_user_id">
                                 <option value="" selected disabled>Selecione um técnico...</option>
                                 {% for tecnico in tecnicos %}
-                                    <option value="{{ tecnico.display_name }}">{{ tecnico.display_name }}</option>
+                                    <option value="{{ tecnico.id }}">{{ tecnico.display_name }}</option>
                                 {% endfor %}
                             </select>
                         </div>

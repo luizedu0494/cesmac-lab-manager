@@ -168,11 +168,9 @@ document.addEventListener('DOMContentLoaded', function() {
             locale: 'pt-br',
             buttonText: { today: 'Hoje', month: 'Mês', week: 'Semana', day: 'Dia' },
             dayMaxEvents: true, 
-            
-            // --- CORREÇÃO FINAL PARA O INDICADOR "+ MAIS" ---
-            moreLinkClassNames: ['fc-more-link-badge'], // Adiciona nossa classe customizada
+            moreLinkClassNames: ['fc-more-link-badge'],
             moreLinkContent: function(args) {
-                return `+${args.num}`; // Retorna apenas o texto, ex: "+3"
+                return `+${args.num}`;
             },
             
             eventSources: [
@@ -284,6 +282,46 @@ document.addEventListener('DOMContentLoaded', function() {
         
         calendar.render();
         
+        // --- LÓGICA DO BOTÃO FLUTUANTE COM DEPURADORES ---
+        const fab = document.getElementById('fab-novo-agendamento');
+        console.log("Procurando pelo botão flutuante (FAB):", fab);
+
+        if (fab) {
+            console.log("Botão flutuante ENCONTRADO. Adicionando o 'ouvinte' de clique.");
+            fab.addEventListener('click', function(e) {
+                console.log("Botão flutuante CLICADO!");
+                e.preventDefault();
+                formAgendamento.reset();
+                document.getElementById('agendamento_id').value = '';
+                document.getElementById('modalLabel').textContent = 'Novo Agendamento Rápido';
+                
+                const today = new Date().toISOString().split('T')[0];
+                dataInput.value = today;
+                dataInput.readOnly = false;
+
+                document.getElementById('infoSolicitante').style.display = 'none';
+                document.getElementById('infoAtribuicao').style.display = 'none';
+                document.getElementById('btnAprovar').style.display = 'none';
+                document.getElementById('btnRejeitar').style.display = 'none';
+                document.getElementById('btnSalvarAlteracoes').style.display = 'none';
+                document.getElementById('btnExcluir').style.display = 'none';
+                document.getElementById('btnSalvar').style.display = 'block';
+                secaoManterDados.style.display = 'block';
+
+                if (userRole === 'Coordenador') {
+                    secaoAtribuicao.style.display = 'block';
+                    radioAtribuirUser.checked = true;
+                    radioAtribuirUser.dispatchEvent(new Event('change'));
+                } else {
+                    secaoAtribuicao.style.display = 'none';
+                }
+                
+                modalAgendamento.show();
+            });
+        } else {
+            console.error("ERRO CRÍTICO: Botão flutuante com id 'fab-novo-agendamento' não foi encontrado no HTML.");
+        }
+        
         function atualizarLinkExportacao() {
             if (!btnExportar) return;
             const params = new URLSearchParams();
@@ -306,7 +344,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 calendar.addEventSource({ id: 'agendamentos', url: `/api/agendamentos?${params.toString()}` });
                 atualizarLinkExportacao();
             });
-
             btnLimparFiltros.addEventListener('click', function() {
                 filtroForm.reset();
                 filtroForm.dispatchEvent(new Event('submit'));

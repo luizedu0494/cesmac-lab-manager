@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: sans-serif; }
+        .container { padding: 20px; border: 1px solid #ddd; border-radius: 5px; max-width: 600px; margin: auto; }
+        .header { background-color: #003366; color: white; padding: 10px; text-align: center; }
+        .content { padding: 20px; }
+        .footer { font-size: 0.8em; text-align: center; color: #777; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Lembrete de Agendamento - CESMAC Lab</h2>
+        </div>
+        <div class="content">
+            <p>Olá, {{ nome_usuario }},</p>
+            <p>Este é um lembrete sobre o seu agendamento para amanhã:</p>
+            <ul>
+                <li><strong>Evento:</strong> {{ agendamento.titulo }}</li>
+                <li><strong>Data:</strong> {{ agendamento.data.strftime('%d/%m/%Y') }}</li>
+                <li><strong>Horário:</strong> {{ agendamento.horario_bloco }}</li>
+                <li><strong>Laboratório:</strong> {{ agendamento.laboratorio_nome }}</li>
+            </ul>
+            <p>Por favor, esteja preparado(a) para a atividade.</p>
+            <p>Atenciosamente,<br>Sistema de Agendamento de Laboratórios</p>
+        </div>
+        <div class="footer">
+            <p>Esta é uma mensagem automática. Por favor, não responda.</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,7 +1,7 @@
 from flask import g, render_template, redirect, url_for, session, flash, Blueprint, jsonify, request, send_file
 from . import db, oauth
 from .models import User, Agendamento, Recesso, Aviso, Grupo
-from .config_data import EMAILS_COORDENADORES, EMAILS_TECNICOS, LISTA_LABORATORIOS, BLOCOS_HORARIO
+from .config_data import EMAILS_COORDENADORES, LISTA_LABORATORIOS, BLOCOS_HORARIO
 import secrets
 from datetime import datetime, timedelta, date
 import holidays 
@@ -9,10 +9,10 @@ import pandas as pd
 import io
 from sqlalchemy import or_, func
 import json
+from .email import send_email
 
 main_bp = Blueprint('main', __name__)
 
-# Passamos a especificar o idioma aqui para que seja usado em toda a aplicação
 br_holidays = holidays.country_holidays('BR', subdiv='AL', language='pt_BR')
 
 @main_bp.before_request
@@ -56,6 +56,31 @@ def index():
         ).order_by(Agendamento.data.asc()).limit(5).all()
         
     return render_template('index.html', dashboard=dashboard_data)
+
+@main_bp.route('/teste-email')
+def teste_email():
+    if g.user is None or g.user.role != 'Coordenador':
+        flash('Acesso não permitido.', 'danger')
+        return redirect(url_for('main.index'))
+    
+    agendamento_teste = {
+        'titulo': 'Aula Teste de Envio de E-mail',
+        'data': date.today() + timedelta(days=1),
+        'horario_bloco': '10:00 - 12:00',
+        'laboratorio_nome': 'Laboratório de Testes'
+    }
+
+    send_email(
+        to=g.user.email,
+        subject='E-mail de Teste - Sistema CESMAC Lab',
+        template='email/lembrete.html',
+        nome_usuario=g.user.display_name,
+        agendamento=agendamento_teste
+    )
+    
+    flash('E-mail de teste enviado! Verifique sua caixa de entrada (e spam).', 'info')
+    return redirect(url_for('main.index'))
+
 
 @main_bp.route('/login')
 def login():
@@ -483,9 +508,7 @@ def api_agendamentos():
 def api_feriados():
     if g.user is None: return jsonify({'error': 'Não autorizado'}), 401
     ano_atual = datetime.now().year
-    # --- CORREÇÃO AQUI ---
     feriados_dict = holidays.country_holidays('BR', subdiv='AL', years=[ano_atual, ano_atual + 1], language='pt_BR')
-    
     eventos_feriados = [{'title': nome, 'start': data.isoformat(), 'display': 'background', 'color': '#ff9f89'} for data, nome in feriados_dict.items()]
     return jsonify(eventos_feriados)
 

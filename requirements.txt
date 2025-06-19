@@ -13,6 +13,9 @@ email-validator
 Authlib
 requests
 
+# Envio de E-mail
+Flask-Mail
+
 # Gerenciamento de Variáveis de Ambiente
 python-dotenv
 

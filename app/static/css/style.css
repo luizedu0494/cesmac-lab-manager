@@ -54,15 +54,21 @@ body, .card, .modal-content, .list-group-item, .accordion-item, .form-control, .
     color: white;
 }
 
-/* --- NOVO ESTILO PARA O BADGE DE "+ MAIS" --- */
+/* --- ESTILO CORRIGIDO PARA O BADGE DE "+ MAIS" --- */
 .fc-more-link-badge {
-    background-color: #0d6efd; /* Cor primária do Bootstrap */
+    background-color: var(--bs-primary);
     color: white;
-    padding: 3px 8px;
-    border-radius: 12px; /* Deixa bem arredondado */
-    font-size: 0.8em;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.9em;
     font-weight: bold;
+    text-decoration: none;
 }
+a.fc-more-link-badge:hover {
+    background-color: #0b5ed7;
+    color: white;
+}
+
 
 /* Regras Específicas para Componentes no Modo Escuro */
 

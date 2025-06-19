@@ -169,10 +169,10 @@ document.addEventListener('DOMContentLoaded', function() {
             buttonText: { today: 'Hoje', month: 'Mês', week: 'Semana', day: 'Dia' },
             dayMaxEvents: true, 
             
-            // --- CUSTOMIZAÇÃO VISUAL DO INDICADOR "+ MAIS" ---
+            // --- CORREÇÃO FINAL PARA O INDICADOR "+ MAIS" ---
+            moreLinkClassNames: ['fc-more-link-badge'], // Adiciona nossa classe customizada
             moreLinkContent: function(args) {
-                // Retorna um HTML customizado com uma classe CSS que podemos estilizar
-                return `<span class="fc-more-link-badge">+${args.num}</span>`;
+                return `+${args.num}`; // Retorna apenas o texto, ex: "+3"
             },
             
             eventSources: [

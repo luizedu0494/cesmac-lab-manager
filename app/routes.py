@@ -185,7 +185,6 @@ def minhas_tarefas():
     agendamentos = query.order_by(Agendamento.data.desc()).all()
     return render_template('minhas_tarefas.html', agendamentos=agendamentos)
 
-
 @main_bp.route('/gerenciar-usuarios', methods=['GET'])
 def gerenciar_usuarios():
     if g.user is None or g.user.role != 'Coordenador':
@@ -384,16 +383,11 @@ def novo_agendamento():
     user_id_atribuido = None
     grupo_id_atribuido = None
 
-    # LÓGICA DE ATRIBUIÇÃO CORRIGIDA E MAIS ROBUSTA
     if g.user.role == 'Coordenador':
         if tipo_atribuicao == 'user':
-            user_id_str = dados.get('atribuido_user_id')
-            if user_id_str: # Garante que não é um valor vazio
-                user_id_atribuido = int(user_id_str)
+            user_id_atribuido = dados.get('atribuido_user_id')
         elif tipo_atribuicao == 'group':
-            grupo_id_str = dados.get('atribuido_grupo_id')
-            if grupo_id_str: # Garante que não é um valor vazio
-                grupo_id_atribuido = int(grupo_id_str)
+            grupo_id_atribuido = dados.get('atribuido_grupo_id')
     else: 
         user_id_atribuido = g.user.id
     
@@ -412,6 +406,40 @@ def novo_agendamento():
     db.session.commit()
     
     return jsonify({'success': True, 'message': 'Agendamento solicitado com sucesso!'})
+
+@main_bp.route('/agendamento/editar/<int:agendamento_id>', methods=['POST'])
+def editar_agendamento(agendamento_id):
+    if g.user is None:
+        return jsonify({'error': 'Não autorizado'}), 401
+    
+    agendamento = Agendamento.query.get_or_404(agendamento_id)
+
+    if agendamento.solicitante_id != g.user.id and g.user.role != 'Coordenador':
+        return jsonify({'success': False, 'message': 'Ação não permitida'}), 403
+
+    dados = request.form
+    agendamento.titulo = dados.get('titulo')
+    agendamento.laboratorio_id = dados.get('laboratorio')
+    agendamento.laboratorio_nome = next((lab['name'] for lab in LISTA_LABORATORIOS if lab['id'] == agendamento.laboratorio_id), 'Desconhecido')
+    agendamento.horario_bloco = dados.get('horario')
+    
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'Agendamento atualizado com sucesso!'})
+
+@main_bp.route('/agendamento/deletar/<int:agendamento_id>', methods=['POST'])
+def deletar_agendamento(agendamento_id):
+    if g.user is None:
+        return jsonify({'error': 'Não autorizado'}), 401
+
+    agendamento = Agendamento.query.get_or_404(agendamento_id)
+
+    if agendamento.solicitante_id != g.user.id and g.user.role != 'Coordenador':
+        return jsonify({'success': False, 'message': 'Ação não permitida'}), 403
+    
+    db.session.delete(agendamento)
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'Agendamento excluído com sucesso!'})
+
 
 @main_bp.route('/importar', methods=['GET', 'POST'])
 def importar_agendamentos():
@@ -543,25 +571,6 @@ def ajuda_chat():
     answer = faq_search.find_best_faq_answer(question)
     
     return jsonify({'answer': answer})
-
-@main_bp.route('/agendamento/aprovar/<int:agendamento_id>', methods=['POST'])
-def aprovar_agendamento(agendamento_id):
-    if g.user is None or g.user.role != 'Coordenador': return jsonify({'error': 'Ação não permitida'}), 403
-    
-    agendamento = Agendamento.query.get_or_404(agendamento_id)
-    agendamento.status = 'Aprovada'
-    db.session.commit()
-    return jsonify({'success': True, 'message': 'Agendamento aprovado!'})
-
-@main_bp.route('/agendamento/rejeitar/<int:agendamento_id>', methods=['POST'])
-def rejeitar_agendamento(agendamento_id):
-    if g.user is None or g.user.role != 'Coordenador': return jsonify({'error': 'Ação não permitida'}), 403
-    
-    agendamento = Agendamento.query.get_or_404(agendamento_id)
-    agendamento.status = 'Rejeitada'
-    db.session.commit()
-    return jsonify({'success': True, 'message': 'Agendamento rejeitado.'})
-
 
 @main_bp.route('/api/agendamentos')
 def api_agendamentos():

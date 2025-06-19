@@ -54,34 +54,41 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const chartCanvas = document.getElementById('labChart');
     if (chartCanvas) {
-        const labels = JSON.parse(chartCanvas.dataset.labels || '[]');
-        const values = JSON.parse(chartCanvas.dataset.values || '[]');
-        const ctx = chartCanvas.getContext('2d');
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Nº de Agendamentos',
-                    data: values,
-                    backgroundColor: 'rgba(13, 110, 253, 0.7)',
-                    borderColor: 'rgba(13, 110, 253, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1
-                        }
+        try {
+            const labels = JSON.parse(chartCanvas.dataset.labels || '[]');
+            const values = JSON.parse(chartCanvas.dataset.values || '[]');
+            
+            if (labels.length > 0) {
+                const ctx = chartCanvas.getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Nº de Agendamentos',
+                            data: values,
+                            backgroundColor: 'rgba(13, 110, 253, 0.7)',
+                            borderColor: 'rgba(13, 110, 253, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            }
+                        },
+                        responsive: true,
+                        maintainAspectRatio: false
                     }
-                },
-                responsive: true,
-                maintainAspectRatio: false
+                });
             }
-        });
+        } catch (e) {
+            console.error("Erro ao processar dados do gráfico:", e);
+        }
     }
 
     var calendarEl = document.getElementById('calendar');
@@ -117,9 +124,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 toast.addEventListener('mouseleave', Swal.resumeTimer)
             }
         });
+
         modalAgendamentoEl.addEventListener('hidden.bs.modal', function () {
             formAgendamento.reset();
         });
+
         if (radioAtribuirUser) {
             radioAtribuirUser.addEventListener('change', function() { if (this.checked) {
                 blocoUser.style.display = 'block';
@@ -132,8 +141,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 blocoGrupo.style.display = 'block';
             }});
         }
+
         const savedView = localStorage.getItem('fullcalendar_view') || 'dayGridMonth';
         const savedDate = localStorage.getItem('fullcalendar_date') || new Date().toISOString();
+
         var calendar = new FullCalendar.Calendar(calendarEl, {
             initialView: savedView,
             initialDate: savedDate,
@@ -150,10 +161,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 { id: 'feriados', url: '/api/feriados' },
                 { id: 'recessos', url: '/api/recessos' }
             ],
+            
             datesSet: function(dateInfo) {
                 localStorage.setItem('fullcalendar_view', dateInfo.view.type);
                 localStorage.setItem('fullcalendar_date', dateInfo.view.currentStart.toISOString());
             },
+
             dateClick: function(info) {
                 const eventosDoDia = calendar.getEvents().filter(e => e.startStr === info.dateStr);
                 const eventoDeFundo = eventosDoDia.find(e => e.display === 'background');
@@ -162,11 +175,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     Swal.fire({ icon: 'warning', title: 'Dia não disponível', text: `Não é possível agendar durante o ${tipoBloqueio} de ${eventoDeFundo.title}.`});
                     return;
                 }
+                
                 formAgendamento.reset();
                 document.getElementById('agendamento_id').value = '';
                 document.getElementById('modalLabel').textContent = 'Novo Agendamento';
                 dataInput.value = info.dateStr;
                 dataInput.readOnly = true;
+                
                 if (retainedData) {
                     document.getElementById('titulo').value = retainedData.titulo;
                     document.getElementById('laboratorio').value = retainedData.laboratorio;
@@ -182,12 +197,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     retainedData = null; 
                 }
+                
                 document.getElementById('infoSolicitante').style.display = 'none';
                 document.getElementById('infoAtribuicao').style.display = 'none';
                 document.getElementById('btnAprovar').style.display = 'none';
                 document.getElementById('btnRejeitar').style.display = 'none';
                 document.getElementById('btnSalvar').style.display = 'block';
                 secaoManterDados.style.display = 'block';
+                
                 if (userRole === 'Coordenador') {
                     secaoAtribuicao.style.display = 'block';
                     if (radioAtribuirUser.checked) {
@@ -198,8 +215,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     secaoAtribuicao.style.display = 'none';
                 }
+                
                 modalAgendamento.show();
             },
+
             eventClick: function(info) {
                 if (info.event.display === 'background') { return; }
                 formAgendamento.reset();
@@ -228,7 +247,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 modalAgendamento.show();
             }
         });
+        
         calendar.render();
+        
         function atualizarLinkExportacao() {
             if (!btnExportar) return;
             const params = new URLSearchParams();
@@ -237,6 +258,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (filtroStatus.value) params.append('status', filtroStatus.value);
             btnExportar.href = `/relatorio/exportar?${params.toString()}`;
         }
+
         if (filtroForm) {
             atualizarLinkExportacao();
             filtroForm.addEventListener('submit', function(e) {
@@ -250,11 +272,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 calendar.addEventSource({ id: 'agendamentos', url: `/api/agendamentos?${params.toString()}` });
                 atualizarLinkExportacao();
             });
+
             btnLimparFiltros.addEventListener('click', function() {
                 filtroForm.reset();
                 filtroForm.dispatchEvent(new Event('submit'));
             });
         }
+
         formAgendamento.addEventListener('submit', function(e) {
             e.preventDefault();
             var formData = new FormData(formAgendamento);
@@ -274,6 +298,7 @@ document.addEventListener('DOMContentLoaded', function() {
             fetch('/agendamento/novo', { method: 'POST', body: formData })
                 .then(response => response.json())
                 .then(data => {
+                    const Toast = Swal.mixin({toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true});
                     if (data.success === false) {
                         Toast.fire({ icon: 'error', title: data.message });
                     } else if (data.success === true) {
@@ -285,6 +310,61 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 });
         });
+
+        const btnSalvarAlteracoes = document.getElementById('btnSalvarAlteracoes');
+        if(btnSalvarAlteracoes) {
+            btnSalvarAlteracoes.addEventListener('click', function() {
+                const id = document.getElementById('agendamento_id').value;
+                if (!id) return;
+                const formData = new FormData(formAgendamento);
+                fetch(`/agendamento/editar/${id}`, { method: 'POST', body: formData })
+                    .then(response => response.json())
+                    .then(data => {
+                        const Toast = Swal.mixin({toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true});
+                        if (data.success) {
+                            modalAgendamento.hide();
+                            Toast.fire({ icon: 'success', title: data.message });
+                            calendar.refetchEvents();
+                        } else {
+                            Swal.fire('Erro!', data.message || 'Não foi possível salvar as alterações.', 'error');
+                        }
+                    });
+            });
+        }
+
+        const btnExcluir = document.getElementById('btnExcluir');
+        if(btnExcluir) {
+            btnExcluir.addEventListener('click', function() {
+                const id = document.getElementById('agendamento_id').value;
+                if (!id) return;
+                Swal.fire({
+                    title: 'Tem certeza?',
+                    text: "Você não poderá reverter esta ação!",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#3085d6',
+                    confirmButtonText: 'Sim, excluir!',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        fetch(`/agendamento/deletar/${id}`, { method: 'POST' })
+                            .then(response => response.json())
+                            .then(data => {
+                                const Toast = Swal.mixin({toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true});
+                                if (data.success) {
+                                    modalAgendamento.hide();
+                                    Toast.fire({ icon: 'success', title: data.message });
+                                    calendar.refetchEvents();
+                                } else {
+                                    Swal.fire('Erro!', data.message || 'Não foi possível excluir o agendamento.', 'error');
+                                }
+                            });
+                    }
+                });
+            });
+        }
+
         document.getElementById('btnAprovar').addEventListener('click', function() {
             const id = document.getElementById('agendamento_id').value;
             fetch(`/agendamento/aprovar/${id}`, { method: 'POST' }).then(response => response.json()).then(data => {
@@ -295,6 +375,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
         });
+
         document.getElementById('btnRejeitar').addEventListener('click', function() {
             const id = document.getElementById('agendamento_id').value;
             fetch(`/agendamento/rejeitar/${id}`, { method: 'POST' }).then(response => response.json()).then(data => {
@@ -303,46 +384,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     Swal.fire('Rejeitado!', data.message, 'warning');
                     calendar.refetchEvents();
                 }
-            });
-        });
-    }
-
-    const chatForm = document.getElementById('chat-form');
-    if (chatForm) {
-        const chatWindow = document.getElementById('chat-window');
-        const chatInput = document.getElementById('chat-input');
-        chatForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const userQuestion = chatInput.value.trim();
-            if (userQuestion === '') return;
-            chatWindow.innerHTML += `<div class="d-flex flex-row justify-content-end mb-4 user-message"><div class="p-3 me-3 border" style="border-radius: 15px;"><p class="small mb-0">${userQuestion}</p></div></div>`;
-            chatInput.value = '';
-            chatWindow.scrollTop = chatWindow.scrollHeight;
-            const thinkingId = 'thinking-' + Date.now();
-            chatWindow.innerHTML += `<div class="d-flex flex-row justify-content-start mb-4 ai-message" id="${thinkingId}"><div class="p-3 ms-3" style="border-radius: 15px; background-color: rgba(52, 58, 64, 0.1);"><p class="small mb-0"><i>Pensando...</i></p></div></div>`;
-            chatWindow.scrollTop = chatWindow.scrollHeight;
-            fetch('/api/ajuda-chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question: userQuestion })
-            })
-            .then(response => response.json())
-            .then(data => {
-                const thinkingIndicator = document.getElementById(thinkingId);
-                if (thinkingIndicator) {
-                    thinkingIndicator.remove();
-                }
-                chatWindow.innerHTML += `<div class="d-flex flex-row justify-content-start mb-4 ai-message"><div class="p-3 ms-3" style="border-radius: 15px; background-color: rgba(52, 58, 64, 0.1);"><p class="small mb-0">${data.answer}</p></div></div>`;
-                chatWindow.scrollTop = chatWindow.scrollHeight;
-            })
-            .catch(error => {
-                const thinkingIndicator = document.getElementById(thinkingId);
-                if (thinkingIndicator) {
-                    thinkingIndicator.remove();
-                }
-                console.error("Erro no chat:", error);
-                chatWindow.innerHTML += `<div class="d-flex flex-row justify-content-start mb-4 ai-message"><div class="p-3 ms-3 bg-danger text-white" style="border-radius: 15px;"><p class="small mb-0">Desculpe, não consegui obter uma resposta. Verifique o console ou os logs do servidor.</p></div></div>`;
-                chatWindow.scrollTop = chatWindow.scrollHeight;
             });
         });
     }

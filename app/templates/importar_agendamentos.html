@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Importar Agendamentos de Planilha</h2>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Instruções
+        </div>
+        <div class="card-body">
+            <p>Faça o upload de um arquivo nos formatos <strong>.xlsx</strong> ou <strong>.csv</strong> para criar múltiplos agendamentos de uma só vez.</p>
+            <p>A planilha deve conter as seguintes colunas, na primeira linha:</p>
+            <ul>
+                <li><strong>TITULO:</strong> O nome do evento/aula.</li>
+                <li><strong>DATA:</strong> A data do agendamento no formato <strong>AAAA-MM-DD</strong> (ex: 2025-08-27).</li>
+                <li><strong>HORARIO:</strong> O bloco de horário exato (ex: 07:00 - 09:10).</li>
+                <li><strong>LABORATORIO:</strong> O nome exato do laboratório, conforme a lista abaixo.</li>
+            </ul>
+            <a href="{{ url_for('main.download_template') }}" class="btn btn-secondary"><i class="bi bi-download"></i> Baixar Planilha Modelo</a>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            Nomes de Laboratórios Válidos (Copie e Cole na sua planilha)
+        </div>
+        <div class="card-body">
+            <ul style="column-count: 2; -webkit-column-count: 2; -moz-column-count: 2;">
+                {% for lab in laboratorios %}
+                    <li>{{ lab.name }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            Upload do Arquivo
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="planilha" class="form-label">Selecione o arquivo da planilha:</label>
+                    <input class="form-control" type="file" id="planilha" name="planilha" required accept=".xlsx, .csv">
+                </div>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-upload"></i> Enviar e Verificar</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

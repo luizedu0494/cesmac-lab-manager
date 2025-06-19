@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="mb-4">Pré-visualização da Importação</h2>
+
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <i class="bi bi-check-circle-fill"></i> Agendamentos Válidos ({{ validos|length }})
+        </div>
+        <div class="card-body">
+            {% if validos %}
+            <p>Os seguintes agendamentos estão prontos para serem importados. Eles serão criados com o status "Pendente".</p>
+            <div class="table-responsive">
+                <table class="table table-sm table-striped">
+                    <thead>
+                        <tr><th>Título</th><th>Data</th><th>Horário</th><th>Laboratório</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for item in validos %}
+                        <tr>
+                            <td>{{ item.TITULO }}</td>
+                            <td>{{ item.DATA }}</td>
+                            <td>{{ item.HORARIO }}</td>
+                            <td>{{ item.LABORATORIO }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">Nenhum agendamento válido para importar.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-danger text-white">
+            <i class="bi bi-x-circle-fill"></i> Agendamentos com Conflito ({{ conflitos|length }})
+        </div>
+        <div class="card-body">
+            {% if conflitos %}
+            <p>Os seguintes agendamentos não puderam ser processados pelos motivos listados.</p>
+            <div class="table-responsive">
+                <table class="table table-sm table-striped">
+                    <thead>
+                        <tr><th>Título</th><th>Data</th><th>Horário</th><th>Laboratório</th><th>Motivo do Conflito</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for item in conflitos %}
+                        <tr>
+                            <td>{{ item.TITULO }}</td>
+                            <td>{{ item.DATA }}</td>
+                            <td>{{ item.HORARIO }}</td>
+                            <td>{{ item.LABORATORIO }}</td>
+                            <td><span class="badge text-bg-danger">{{ item.motivo }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">Nenhum conflito encontrado.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    {% if validos %}
+    <form method="POST" action="{{ url_for('main.confirmar_importacao') }}">
+        <input type="hidden" name="dados_validos" value="{{ dados_validos_json }}">
+        <button type="submit" class="btn btn-primary btn-lg">Confirmar e Criar {{ validos|length }} Agendamento(s)</button>
+        <a href="{{ url_for('main.importar_agendamentos') }}" class="btn btn-secondary btn-lg">Cancelar</a>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

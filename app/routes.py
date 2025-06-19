@@ -9,7 +9,6 @@ import pandas as pd
 import io
 from sqlalchemy import or_, func
 import json
-from .email import send_email
 
 main_bp = Blueprint('main', __name__)
 
@@ -57,31 +56,6 @@ def index():
         
     return render_template('index.html', dashboard=dashboard_data)
 
-@main_bp.route('/teste-email')
-def teste_email():
-    if g.user is None or g.user.role != 'Coordenador':
-        flash('Acesso não permitido.', 'danger')
-        return redirect(url_for('main.index'))
-    
-    agendamento_teste = {
-        'titulo': 'Aula Teste de Envio de E-mail',
-        'data': date.today() + timedelta(days=1),
-        'horario_bloco': '10:00 - 12:00',
-        'laboratorio_nome': 'Laboratório de Testes'
-    }
-
-    send_email(
-        to=g.user.email,
-        subject='E-mail de Teste - Sistema CESMAC Lab',
-        template='email/lembrete.html',
-        nome_usuario=g.user.display_name,
-        agendamento=agendamento_teste
-    )
-    
-    flash('E-mail de teste enviado! Verifique sua caixa de entrada (e spam).', 'info')
-    return redirect(url_for('main.index'))
-
-
 @main_bp.route('/login')
 def login():
     return render_template('login.html')
@@ -114,7 +88,6 @@ def auth_callback():
     if user:
         user.name = user_info.get('name')
         user.picture = user_info.get('picture')
-        role = user.role
     else:
         role = 'Não Autorizado'
         if user_email in EMAILS_COORDENADORES:
@@ -244,34 +217,29 @@ def atualizar_perfil(user_id):
     return redirect(url_for('main.gerenciar_usuarios'))
 
 
-@main_bp.route('/recessos', methods=['GET'])
+@main_bp.route('/recessos', methods=['GET', 'POST'])
 def gerenciar_recessos():
     if g.user is None or g.user.role != 'Coordenador':
         flash('Acesso não permitido.', 'danger')
         return redirect(url_for('main.index'))
     
-    recessos = Recesso.query.order_by(Recesso.data_inicio.desc()).all()
-    return render_template('recessos.html', recessos=recessos)
+    if request.method == 'POST':
+        dados = request.form
+        motivo = dados.get('motivo')
+        data_inicio = datetime.strptime(dados.get('data_inicio'), '%Y-%m-%d').date()
+        data_fim = datetime.strptime(dados.get('data_fim'), '%Y-%m-%d').date()
 
-@main_bp.route('/recesso/novo', methods=['POST'])
-def novo_recesso():
-    if g.user is None or g.user.role != 'Coordenador':
-        return redirect(url_for('main.index'))
-    
-    dados = request.form
-    motivo = dados.get('motivo')
-    data_inicio = datetime.strptime(dados.get('data_inicio'), '%Y-%m-%d').date()
-    data_fim = datetime.strptime(dados.get('data_fim'), '%Y-%m-%d').date()
-
-    if data_inicio > data_fim:
-        flash('A data de início não pode ser posterior à data de fim.', 'warning')
+        if data_inicio > data_fim:
+            flash('A data de início não pode ser posterior à data de fim.', 'warning')
+        else:
+            novo = Recesso(motivo=motivo, data_inicio=data_inicio, data_fim=data_fim)
+            db.session.add(novo)
+            db.session.commit()
+            flash('Período de recesso adicionado com sucesso!', 'success')
         return redirect(url_for('main.gerenciar_recessos'))
 
-    novo = Recesso(motivo=motivo, data_inicio=data_inicio, data_fim=data_fim)
-    db.session.add(novo)
-    db.session.commit()
-    flash('Período de recesso adicionado com sucesso!', 'success')
-    return redirect(url_for('main.gerenciar_recessos'))
+    recessos = Recesso.query.order_by(Recesso.data_inicio.desc()).all()
+    return render_template('recessos.html', recessos=recessos)
 
 @main_bp.route('/recesso/deletar/<int:recesso_id>', methods=['POST'])
 def deletar_recesso(recesso_id):
@@ -330,32 +298,29 @@ def ajuda():
         return redirect(url_for('main.login'))
     return render_template('ajuda.html')
 
-@main_bp.route('/grupos', methods=['GET'])
+@main_bp.route('/grupos', methods=['GET', 'POST'])
 def gerenciar_grupos():
     if g.user is None or g.user.role != 'Coordenador':
         flash('Acesso não permitido.', 'danger')
         return redirect(url_for('main.index'))
     
+    if request.method == 'POST':
+        nome_grupo = request.form.get('nome_grupo')
+        if nome_grupo:
+            grupo_existente = Grupo.query.filter_by(nome=nome_grupo).first()
+            if not grupo_existente:
+                novo = Grupo(nome=nome_grupo)
+                db.session.add(novo)
+                db.session.commit()
+                flash(f'Grupo "{nome_grupo}" criado com sucesso!', 'success')
+            else:
+                flash('Já existe um grupo com este nome.', 'warning')
+        return redirect(url_for('main.gerenciar_grupos'))
+
     grupos = Grupo.query.order_by(Grupo.nome).all()
     tecnicos = User.query.filter_by(role='Técnico').all()
     
     return render_template('grupos.html', grupos=grupos, tecnicos=tecnicos)
-
-@main_bp.route('/grupo/novo', methods=['POST'])
-def novo_grupo():
-    if g.user is None or g.user.role != 'Coordenador': return redirect(url_for('main.index'))
-    
-    nome_grupo = request.form.get('nome_grupo')
-    if nome_grupo:
-        grupo_existente = Grupo.query.filter_by(nome=nome_grupo).first()
-        if not grupo_existente:
-            novo = Grupo(nome=nome_grupo)
-            db.session.add(novo)
-            db.session.commit()
-            flash(f'Grupo "{nome_grupo}" criado com sucesso!', 'success')
-        else:
-            flash('Já existe um grupo com este nome.', 'warning')
-    return redirect(url_for('main.gerenciar_grupos'))
 
 @main_bp.route('/grupo/<int:grupo_id>/adicionar_membro', methods=['POST'])
 def adicionar_membro(grupo_id):
@@ -441,6 +406,124 @@ def novo_agendamento():
     db.session.commit()
     
     return jsonify({'success': True, 'message': 'Agendamento solicitado com sucesso!'})
+
+@main_bp.route('/importar', methods=['GET', 'POST'])
+def importar_agendamentos():
+    if g.user is None or g.user.role != 'Coordenador':
+        flash('Acesso não permitido.', 'danger')
+        return redirect(url_for('main.index'))
+    
+    if request.method == 'POST':
+        if 'planilha' not in request.files:
+            flash('Nenhum arquivo selecionado.', 'warning')
+            return redirect(request.url)
+        
+        file = request.files['planilha']
+        if file.filename == '':
+            flash('Nenhum arquivo selecionado.', 'warning')
+            return redirect(request.url)
+
+        if file:
+            try:
+                df = pd.read_excel(file)
+                required_columns = ['TITULO', 'DATA', 'HORARIO', 'LABORATORIO']
+                if not all(col in df.columns for col in required_columns):
+                    flash(f'A planilha precisa conter as colunas: {", ".join(required_columns)}', 'danger')
+                    return redirect(request.url)
+
+                validos = []
+                conflitos = []
+
+                for index, row in df.iterrows():
+                    try:
+                        data_str = str(row['DATA']).split(' ')[0]
+                        data_obj = datetime.strptime(data_str, '%Y-%m-%d').date()
+                        
+                        is_conflict = False
+                        if data_obj in br_holidays:
+                            row['motivo'] = f"Feriado ({br_holidays.get(data_obj)})"
+                            conflitos.append(row.to_dict())
+                            is_conflict = True
+                        if not is_conflict:
+                            recesso_ativo = Recesso.query.filter(Recesso.data_inicio <= data_obj, Recesso.data_fim >= data_obj).first()
+                            if recesso_ativo:
+                                row['motivo'] = f"Recesso ({recesso_ativo.motivo})"
+                                conflitos.append(row.to_dict())
+                                is_conflict = True
+                        if not is_conflict:
+                            lab_nome_original = str(row['LABORATORIO']).strip()
+                            horario = str(row['HORARIO']).strip()
+                            lab_id = next((lab['id'] for lab in LISTA_LABORATORIOS if lab['name'].strip().lower() == lab_nome_original.lower()), None)
+                            
+                            if not lab_id:
+                                row['motivo'] = "Laboratório não encontrado"
+                                conflitos.append(row.to_dict())
+                                is_conflict = True
+                            else:
+                                agendamento_existente = Agendamento.query.filter_by(data=data_obj, horario_bloco=horario, laboratorio_id=lab_id).first()
+                                if agendamento_existente:
+                                    row['motivo'] = "Horário/Laboratório já ocupado"
+                                    conflitos.append(row.to_dict())
+                                    is_conflict = True
+                        
+                        if not is_conflict:
+                            validos.append(row.to_dict())
+                    except Exception as e:
+                        row['motivo'] = f"Erro na linha: {e}"
+                        conflitos.append(row.to_dict())
+
+                dados_validos_json = json.dumps(validos, default=str)
+                return render_template('preview_importacao.html', validos=validos, conflitos=conflitos, dados_validos_json=dados_validos_json)
+
+            except Exception as e:
+                flash(f'Ocorreu um erro ao processar o arquivo: {e}', 'danger')
+                return redirect(request.url)
+
+    return render_template('importar_agendamentos.html', laboratorios=LISTA_LABORATORIOS)
+
+@main_bp.route('/importar/confirmar', methods=['POST'])
+def confirmar_importacao():
+    if g.user is None or g.user.role != 'Coordenador':
+        flash('Ação não permitida.', 'danger')
+        return redirect(url_for('main.index'))
+        
+    dados_json = request.form.get('dados_validos')
+    if not dados_json:
+        flash('Nenhum dado válido para importar.', 'warning')
+        return redirect(url_for('main.importar_agendamentos'))
+
+    agendamentos_para_criar = json.loads(dados_json)
+    contador = 0
+    for item in agendamentos_para_criar:
+        lab_nome_original = str(item.get('LABORATORIO')).strip()
+        
+        lab_id = next((lab['id'] for lab in LISTA_LABORATORIOS if lab['name'].strip().lower() == lab_nome_original.lower()), None)
+        
+        if lab_id:
+            lab_nome_sistema = next((lab['name'] for lab in LISTA_LABORATORIOS if lab['id'] == lab_id), lab_nome_original)
+            novo_agendamento = Agendamento(
+                titulo=item.get('TITULO'),
+                data=datetime.strptime(str(item.get('DATA')).split(' ')[0], '%Y-%m-%d').date(),
+                horario_bloco=str(item.get('HORARIO')).strip(),
+                laboratorio_id=lab_id,
+                laboratorio_nome=lab_nome_sistema,
+                status='Pendente',
+                solicitante_id=g.user.id
+            )
+            db.session.add(novo_agendamento)
+            contador += 1
+    
+    if contador > 0:
+        db.session.commit()
+    flash(f'{contador} agendamentos foram importados e criados com sucesso!', 'success')
+    return redirect(url_for('main.calendario'))
+
+@main_bp.route('/download/template')
+def download_template():
+    if g.user is None or g.user.role != 'Coordenador':
+        return redirect(url_for('main.index'))
+    return send_file('static/downloads/template_agendamentos.xlsx', as_attachment=True)
+
 
 @main_bp.route('/agendamento/aprovar/<int:agendamento_id>', methods=['POST'])
 def aprovar_agendamento(agendamento_id):

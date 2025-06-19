@@ -2,10 +2,15 @@
 
 {% block content %}
 <div id="main-container" class="container-fluid" data-user-role="{{ user_role }}" data-user-id="{{ user_id }}">
-    <h2 class="mb-4">Calendário de Agendamentos</h2>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Calendário de Agendamentos</h2>
+        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#painelFiltros" aria-expanded="false" aria-controls="painelFiltros">
+            <i class="bi bi-filter"></i> Filtros
+        </button>
+    </div>
 
-    <div class="card mb-4">
-        <div class="card-body">
+    <div class="collapse" id="painelFiltros">
+        <div class="card card-body mb-4">
             <form id="filtroForm" class="row g-3 align-items-end">
                 <div class="col-md-3">
                     <label for="filtro-texto" class="form-label">Buscar por Título</label>
@@ -139,7 +144,7 @@
                 <button type="button" class="btn btn-info" id="btnSalvarAlteracoes" style="display: none;">Salvar Alterações</button>
                 <button type="button" class="btn btn-danger" id="btnRejeitar" style="display: none;">Rejeitar</button>
                 <button type="button" class="btn btn-success" id="btnAprovar" style="display: none;">Aprovar</button>
-                <button type="button" class="btn btn-primary" id="btnSalvar" form="formAgendamento">Salvar Agendamento</button>
+                <button type="button" class="btn btn-primary" id="btnSalvar">Salvar Agendamento</button>
             </div>
         </div>
     </div>

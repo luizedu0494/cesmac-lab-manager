@@ -1,3 +1,10 @@
+// REGISTRO DO SERVICE WORKER (PWA)
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/static/sw.js')
+        .then(reg => console.log('Service Worker: Registrado com sucesso!', reg))
+        .catch(err => console.log('Service Worker: Falha no registro.', err));
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     
     // Lógica do Modo Noturno (Dark Mode)
@@ -33,9 +40,11 @@ document.addEventListener('DOMContentLoaded', function() {
         faqSearch.addEventListener('keyup', function() {
             const searchTerm = this.value.toLowerCase();
             const faqItems = document.querySelectorAll('.faq-item');
+
             faqItems.forEach(function(item) {
                 const questionText = item.querySelector('.accordion-button').textContent.toLowerCase();
                 const answerText = item.querySelector('.accordion-body').textContent.toLowerCase();
+                
                 if (questionText.includes(searchTerm) || answerText.includes(searchTerm)) {
                     item.style.display = 'block';
                 } else {
@@ -44,34 +53,44 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
-
+    
     // Lógica do Gráfico do Dashboard
     const chartCanvas = document.getElementById('labChart');
-    if (chartCanvas && typeof chartData !== 'undefined') {
-        const labels = chartData.labels;
-        const values = chartData.values;
-        if (labels.length > 0) {
-            const ctx = chartCanvas.getContext('2d');
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Nº de Agendamentos',
-                        data: values,
-                        backgroundColor: 'rgba(13, 110, 253, 0.7)',
-                        borderColor: 'rgba(13, 110, 253, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    scales: {
-                        y: { beginAtZero: true, ticks: { stepSize: 1 } }
+    if (chartCanvas) {
+        try {
+            const labels = JSON.parse(chartCanvas.dataset.labels || '[]');
+            const values = JSON.parse(chartCanvas.dataset.values || '[]');
+            
+            if (labels.length > 0) {
+                const ctx = chartCanvas.getContext('2d');
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Nº de Agendamentos',
+                            data: values,
+                            backgroundColor: 'rgba(13, 110, 253, 0.7)',
+                            borderColor: 'rgba(13, 110, 253, 1)',
+                            borderWidth: 1
+                        }]
                     },
-                    responsive: true,
-                    maintainAspectRatio: false
-                }
-            });
+                    options: {
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            }
+                        },
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            }
+        } catch (e) {
+            console.error("Erro ao processar dados do gráfico:", e);
         }
     }
 
@@ -149,6 +168,12 @@ document.addEventListener('DOMContentLoaded', function() {
             locale: 'pt-br',
             buttonText: { today: 'Hoje', month: 'Mês', week: 'Semana', day: 'Dia' },
             dayMaxEvents: true, 
+            
+            // --- MUDANÇA PARA O BADGE COMPACTO ---
+            moreLinkContent: function(args) {
+                return `<span class="badge rounded-pill bg-primary">+${args.num}</span>`;
+            },
+            
             eventSources: [
                 { id: 'agendamentos', url: `/api/agendamentos` },
                 { id: 'feriados', url: '/api/feriados' },
@@ -223,37 +248,35 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('modalLabel').textContent = 'Detalhes do Agendamento';
                 document.getElementById('titulo').value = info.event.title;
                 dataInput.value = info.event.start.toISOString().split('T')[0];
+                dataInput.readOnly = true;
                 document.getElementById('laboratorio').value = props.laboratorio_id;
                 document.getElementById('horario').value = props.horario_bloco;
-
                 document.getElementById('solicitanteNome').textContent = props.solicitante;
                 document.getElementById('atribuidoNome').textContent = props.atribuido_a;
                 document.getElementById('infoSolicitante').style.display = 'block';
                 document.getElementById('infoAtribuicao').style.display = 'block';
                 secaoAtribuicao.style.display = 'none';
                 secaoManterDados.style.display = 'none';
-
-                const podeEditar = (currentUserId === props.solicitante_id || userRole === 'Coordenador');
-                const campos = [document.getElementById('titulo'), document.getElementById('laboratorio'), document.getElementById('horario')];
-                campos.forEach(campo => campo.disabled = !podeEditar);
-                dataInput.readOnly = true;
-
                 document.getElementById('btnSalvar').style.display = 'none';
                 document.getElementById('btnAprovar').style.display = 'none';
                 document.getElementById('btnRejeitar').style.display = 'none';
                 document.getElementById('btnSalvarAlteracoes').style.display = 'none';
                 document.getElementById('btnExcluir').style.display = 'none';
                 
-                if (userRole === 'Coordenador' && props.status === 'Pendente') {
-                    document.getElementById('btnAprovar').style.display = 'block';
-                    document.getElementById('btnRejeitar').style.display = 'block';
-                }
-                
+                const podeEditar = (currentUserId === props.solicitante_id || userRole === 'Coordenador');
                 if (podeEditar) {
                     document.getElementById('btnSalvarAlteracoes').style.display = 'block';
                     document.getElementById('btnExcluir').style.display = 'block';
                 }
+
+                if (userRole === 'Coordenador' && props.status === 'Pendente') {
+                    document.getElementById('btnAprovar').style.display = 'block';
+                    document.getElementById('btnRejeitar').style.display = 'block';
+                } 
                 
+                const campos = [document.getElementById('titulo'), document.getElementById('laboratorio'), document.getElementById('horario')];
+                campos.forEach(campo => campo.disabled = !podeEditar);
+
                 modalAgendamento.show();
             }
         });
@@ -282,6 +305,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 calendar.addEventSource({ id: 'agendamentos', url: `/api/agendamentos?${params.toString()}` });
                 atualizarLinkExportacao();
             });
+
             btnLimparFiltros.addEventListener('click', function() {
                 filtroForm.reset();
                 filtroForm.dispatchEvent(new Event('submit'));
@@ -290,23 +314,34 @@ document.addEventListener('DOMContentLoaded', function() {
 
         btnSalvar.addEventListener('click', function() {
             const formData = new FormData(formAgendamento);
+            const manterDadosCheck = document.getElementById('manterDados');
+            if (manterDadosCheck.checked) {
+                retainedData = {
+                    titulo: formData.get('titulo'),
+                    laboratorio: formData.get('laboratorio'),
+                    horario: formData.get('horario'),
+                    tipo_atribuicao: formData.get('tipo_atribuicao'),
+                    atribuido_id: formData.get('tipo_atribuicao') === 'user' ? formData.get('atribuido_user_id') : formData.get('atribuido_grupo_id')
+                };
+            } else {
+                retainedData = null;
+            }
+            manterDadosCheck.checked = false;
             fetch('/agendamento/novo', { method: 'POST', body: formData })
                 .then(response => response.json())
                 .then(data => {
-                    const Toast = Swal.mixin({toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true});
                     if (data.success === false) {
                         Toast.fire({ icon: 'error', title: data.message });
                     } else if (data.success === true) {
                         Toast.fire({ icon: 'success', title: data.message });
                         calendar.refetchEvents();
-                        
-                        if (!document.getElementById('manterDados').checked) {
+                        if (!retainedData) {
                             modalAgendamento.hide();
                         }
                     }
                 });
         });
-        
+
         btnSalvarAlteracoes.addEventListener('click', function() {
             const id = document.getElementById('agendamento_id').value;
             if (!id) return;
@@ -314,7 +349,6 @@ document.addEventListener('DOMContentLoaded', function() {
             fetch(`/agendamento/editar/${id}`, { method: 'POST', body: formData })
                 .then(response => response.json())
                 .then(data => {
-                    const Toast = Swal.mixin({toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true});
                     if (data.success) {
                         modalAgendamento.hide();
                         Toast.fire({ icon: 'success', title: data.message });
@@ -342,7 +376,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     fetch(`/agendamento/deletar/${id}`, { method: 'POST' })
                         .then(response => response.json())
                         .then(data => {
-                            const Toast = Swal.mixin({toast: true, position: 'top-end', showConfirmButton: false, timer: 3000, timerProgressBar: true});
                             if (data.success) {
                                 modalAgendamento.hide();
                                 Toast.fire({ icon: 'success', title: data.message });

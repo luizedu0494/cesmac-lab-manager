@@ -12,7 +12,8 @@ import json
 
 main_bp = Blueprint('main', __name__)
 
-br_holidays = holidays.country_holidays('BR', subdiv='AL')
+# Passamos a especificar o idioma aqui para que seja usado em toda a aplicação
+br_holidays = holidays.country_holidays('BR', subdiv='AL', language='pt_BR')
 
 @main_bp.before_request
 def load_logged_in_user():
@@ -185,7 +186,6 @@ def minhas_tarefas():
     agendamentos = query.order_by(Agendamento.data.desc()).all()
     return render_template('minhas_tarefas.html', agendamentos=agendamentos)
 
-# --- ROTAS DE GERENCIAMENTO (COORDENADOR) ---
 
 @main_bp.route('/gerenciar-usuarios', methods=['GET'])
 def gerenciar_usuarios():
@@ -483,7 +483,9 @@ def api_agendamentos():
 def api_feriados():
     if g.user is None: return jsonify({'error': 'Não autorizado'}), 401
     ano_atual = datetime.now().year
-    feriados_dict = holidays.country_holidays('BR', subdiv='AL', years=[ano_atual, ano_atual + 1])
+    # --- CORREÇÃO AQUI ---
+    feriados_dict = holidays.country_holidays('BR', subdiv='AL', years=[ano_atual, ano_atual + 1], language='pt_BR')
+    
     eventos_feriados = [{'title': nome, 'start': data.isoformat(), 'display': 'background', 'color': '#ff9f89'} for data, nome in feriados_dict.items()]
     return jsonify(eventos_feriados)
 

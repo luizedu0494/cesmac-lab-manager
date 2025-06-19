@@ -20,7 +20,6 @@ Flask-Mail
 langchain
 langchain-google-genai
 langchain-community
-faiss-cpu
 
 # Gerenciamento de Variáveis de Ambiente
 python-dotenv

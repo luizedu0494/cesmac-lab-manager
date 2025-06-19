@@ -1,6 +1,6 @@
 import os
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
-from langchain_community.vectorstores import FAISS
+from langchain_community.vectorstores import DocArrayInMemorySearch
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.documents import Document
@@ -27,11 +27,11 @@ def get_knowledge_base():
         try:
             api_key = os.getenv('GEMINI_API_KEY')
             if not api_key:
-                print("ERRO CRÍTICO: A chave de API do Gemini não foi encontrada. Verifique o arquivo .env ou as variáveis de ambiente.")
+                print("ERRO CRÍTICO: A chave de API do Gemini (GEMINI_API_KEY) não foi encontrada no ambiente.")
                 return None
             
             embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=api_key)
-            knowledge_base = FAISS.from_documents(documents, embeddings)
+            knowledge_base = DocArrayInMemorySearch.from_documents(documents, embeddings)
             print("DEBUG: Base de conhecimento criada com sucesso.")
         except Exception as e:
             print(f"ERRO CRÍTICO ao criar embeddings ou base de conhecimento: {e}")
@@ -52,7 +52,6 @@ def get_faq_answer(question: str) -> str:
     retriever = kb.as_retriever()
     
     try:
-        # --- CORREÇÃO AQUI: Usando o nome do modelo mais recente ---
         llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest", temperature=0.3, google_api_key=api_key)
         
         template = """

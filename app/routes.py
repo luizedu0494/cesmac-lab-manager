@@ -153,6 +153,7 @@ def calendario():
         laboratorios=LISTA_LABORATORIOS, 
         horarios=BLOCOS_HORARIO, 
         user_role=g.user.role,
+        user_id=g.user.id, # Enviando o ID do usuário para o template
         tecnicos=tecnicos,
         grupos=grupos)
 
@@ -215,7 +216,6 @@ def atualizar_perfil(user_id):
         flash('Perfil inválido selecionado.', 'danger')
     
     return redirect(url_for('main.gerenciar_usuarios'))
-
 
 @main_bp.route('/recessos', methods=['GET', 'POST'])
 def gerenciar_recessos():
@@ -410,7 +410,7 @@ def novo_agendamento():
 @main_bp.route('/agendamento/editar/<int:agendamento_id>', methods=['POST'])
 def editar_agendamento(agendamento_id):
     if g.user is None:
-        return jsonify({'error': 'Não autorizado'}), 401
+        return jsonify({'success': False, 'message': 'Não autorizado'}), 401
     
     agendamento = Agendamento.query.get_or_404(agendamento_id)
 
@@ -429,7 +429,7 @@ def editar_agendamento(agendamento_id):
 @main_bp.route('/agendamento/deletar/<int:agendamento_id>', methods=['POST'])
 def deletar_agendamento(agendamento_id):
     if g.user is None:
-        return jsonify({'error': 'Não autorizado'}), 401
+        return jsonify({'success': False, 'message': 'Não autorizado'}), 401
 
     agendamento = Agendamento.query.get_or_404(agendamento_id)
 
@@ -559,19 +559,6 @@ def download_template():
     return send_file('static/downloads/template_agendamentos.xlsx', as_attachment=True)
 
 
-@main_bp.route('/api/ajuda-chat', methods=['POST'])
-def ajuda_chat():
-    if g.user is None:
-        return jsonify({'answer': 'Erro: você precisa estar logado para usar o chat.'}), 401
-    
-    question = request.json.get('question')
-    if not question:
-        return jsonify({'answer': 'Erro: nenhuma pergunta foi enviada.'}), 400
-
-    answer = faq_search.find_best_faq_answer(question)
-    
-    return jsonify({'answer': answer})
-
 @main_bp.route('/api/agendamentos')
 def api_agendamentos():
     if g.user is None: return jsonify({'error': 'Não autorizado'}), 401
@@ -606,6 +593,7 @@ def api_agendamentos():
                 'laboratorio_nome': agendamento.laboratorio_nome,
                 'horario_bloco': agendamento.horario_bloco,
                 'status': agendamento.status,
+                'solicitante_id': agendamento.solicitante_id,
                 'solicitante': solicitante_nome,
                 'atribuido_a': atribuido_a,
                 'user_id': agendamento.user_id,

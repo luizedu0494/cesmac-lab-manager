@@ -5,8 +5,6 @@ if ('serviceWorker' in navigator) {
         .catch(err => console.log('Service Worker: Falha no registro.', err));
 }
 
-// --- LÓGICA DE NOTIFICAÇÃO DO NAVEGADOR (REFINADA) ---
-
 function verificarPermissaoNotificacao() {
     const alerta = document.getElementById('alerta-notificacao');
     if (!alerta) {
@@ -291,6 +289,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 dataInput.value = info.dateStr;
                 dataInput.readOnly = true;
                 
+                const campos = [document.getElementById('titulo'), dataInput, document.getElementById('laboratorio'), document.getElementById('horario')];
+                campos.forEach(campo => campo.disabled = false);
+
                 if (retainedData) {
                     document.getElementById('titulo').value = retainedData.titulo;
                     document.getElementById('laboratorio').value = retainedData.laboratorio;

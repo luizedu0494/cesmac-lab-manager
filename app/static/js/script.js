@@ -6,45 +6,32 @@ if ('serviceWorker' in navigator) {
 }
 
 // --- LÓGICA DE NOTIFICAÇÃO DO NAVEGADOR ---
-
-function verificarPermissaoNotificacao() {
+function solicitarPermissaoDeNotificacao() {
     if (!("Notification" in window)) {
         console.log("Este navegador não suporta notificações.");
         return;
     }
 
-    const alerta = document.getElementById('alerta-notificacao');
-    if (!alerta) return; // Só continua se o alerta existir na página (Dashboard)
-
-    const textoAlerta = document.getElementById('alerta-notificacao-texto');
-    const btnAtivar = document.getElementById('btn-ativar-notificacoes');
-
     if (Notification.permission === "granted") {
-        alerta.style.display = 'none'; // Se já tem permissão, esconde o alerta
+        console.log("Permissão para notificações já concedida.");
         iniciarVerificadorDeNotificacoes();
-    } else if (Notification.permission === "denied") {
-        textoAlerta.innerHTML = '<i class="bi bi-bell-slash-fill me-2"></i> As notificações estão bloqueadas. Mude a configuração do seu navegador para recebê-las.';
-        btnAtivar.style.display = 'none'; // Esconde o botão, pois ele não pode pedir de novo
-        alerta.style.display = 'flex';
-    } else { // "default" - ainda não perguntou
-        alerta.style.display = 'flex';
-        btnAtivar.addEventListener('click', () => {
-            Notification.requestPermission().then(permission => {
-                if (permission === "granted") {
-                    new Notification("Obrigado!", {
-                        body: "Você agora receberá notificações do sistema.",
-                        icon: "/static/images/icon-192x192.png"
-                    });
-                    alerta.style.display = 'none';
-                    iniciarVerificadorDeNotificacoes();
-                }
-            });
+    }
+    else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then(function (permission) {
+            if (permission === "granted") {
+                console.log("Permissão para notificações concedida!");
+                new Notification("Obrigado!", {
+                    body: "Você agora receberá notificações do sistema.",
+                    icon: "/static/images/icon-192x192.png"
+                });
+                iniciarVerificadorDeNotificacoes();
+            }
         });
     }
 }
 
 let lastCheckTimestamp = new Date().toISOString();
-let notificationInterval = null; // Guarda nosso timer
+let notificationInterval = null;
 
 function verificarNovasNotificacoes() {
     fetch(`/api/novas-notificacoes?since=${lastCheckTimestamp}`)
@@ -56,14 +43,12 @@ function verificarNovasNotificacoes() {
                         body: notif.body,
                         icon: '/static/images/icon-192x192.png'
                     });
-                    // Adiciona um link ao clicar na notificação
                     notification.onclick = function() {
                         window.focus();
                         window.location.href = '/minhas-tarefas';
                     };
                 });
-                const calendarEl = document.getElementById('calendar');
-                if (calendarEl && window.calendar) {
+                if (window.calendar) {
                     window.calendar.refetchEvents();
                 }
             }
@@ -80,11 +65,11 @@ function iniciarVerificadorDeNotificacoes() {
     }
 }
 
+// --- FIM DA LÓGICA DE NOTIFICAÇÃO ---
+
+
 document.addEventListener('DOMContentLoaded', function() {
-    // Verifica e configura o alerta de notificações
-    verificarPermissaoNotificacao();
     
-    // Todo o resto do código continua igual...
     const themeToggle = document.getElementById('theme-toggle');
     if (themeToggle) {
         const currentTheme = localStorage.getItem('theme') || 'light';
@@ -357,6 +342,42 @@ document.addEventListener('DOMContentLoaded', function() {
         window.calendar = calendar;
         calendar.render();
         
+        const fab = document.getElementById('fab-novo-agendamento');
+        if (fab) {
+            fab.addEventListener('click', function(e) {
+                e.preventDefault();
+                formAgendamento.reset();
+                document.getElementById('agendamento_id').value = '';
+                document.getElementById('modalLabel').textContent = 'Novo Agendamento Rápido';
+                
+                const today = new Date().toISOString().split('T')[0];
+                dataInput.value = today;
+                dataInput.readOnly = false;
+
+                const campos = [document.getElementById('titulo'), dataInput, document.getElementById('laboratorio'), document.getElementById('horario')];
+                campos.forEach(campo => campo.disabled = false);
+
+                document.getElementById('infoSolicitante').style.display = 'none';
+                document.getElementById('infoAtribuicao').style.display = 'none';
+                document.getElementById('btnAprovar').style.display = 'none';
+                document.getElementById('btnRejeitar').style.display = 'none';
+                document.getElementById('btnSalvarAlteracoes').style.display = 'none';
+                document.getElementById('btnExcluir').style.display = 'none';
+                btnSalvar.style.display = 'block';
+                secaoManterDados.style.display = 'block';
+
+                if (userRole === 'Coordenador') {
+                    secaoAtribuicao.style.display = 'block';
+                    radioAtribuirUser.checked = true;
+                    radioAtribuirUser.dispatchEvent(new Event('change'));
+                } else {
+                    secaoAtribuicao.style.display = 'none';
+                }
+                
+                modalAgendamento.show();
+            });
+        }
+        
         function atualizarLinkExportacao() {
             if (!btnExportar) return;
             const params = new URLSearchParams();
@@ -481,6 +502,46 @@ document.addEventListener('DOMContentLoaded', function() {
                     Swal.fire('Rejeitado!', data.message, 'warning');
                     calendar.refetchEvents();
                 }
+            });
+        });
+    }
+    
+    const chatForm = document.getElementById('chat-form');
+    if (chatForm) {
+        const chatWindow = document.getElementById('chat-window');
+        const chatInput = document.getElementById('chat-input');
+        chatForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const userQuestion = chatInput.value.trim();
+            if (userQuestion === '') return;
+            chatWindow.innerHTML += `<div class="d-flex flex-row justify-content-end mb-4 user-message"><div class="p-3 me-3 border" style="border-radius: 15px;"><p class="small mb-0">${userQuestion}</p></div></div>`;
+            chatInput.value = '';
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            const thinkingId = 'thinking-' + Date.now();
+            chatWindow.innerHTML += `<div class="d-flex flex-row justify-content-start mb-4 ai-message" id="${thinkingId}"><div class="p-3 ms-3" style="border-radius: 15px; background-color: rgba(52, 58, 64, 0.1);"><p class="small mb-0"><i>Pensando...</i></p></div></div>`;
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            fetch('/api/ajuda-chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question: userQuestion })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const thinkingIndicator = document.getElementById(thinkingId);
+                if (thinkingIndicator) {
+                    thinkingIndicator.remove();
+                }
+                chatWindow.innerHTML += `<div class="d-flex flex-row justify-content-start mb-4 ai-message"><div class="p-3 ms-3" style="border-radius: 15px; background-color: rgba(52, 58, 64, 0.1);"><p class="small mb-0">${data.answer}</p></div></div>`;
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            })
+            .catch(error => {
+                const thinkingIndicator = document.getElementById(thinkingId);
+                if (thinkingIndicator) {
+                    thinkingIndicator.remove();
+                }
+                console.error("Erro no chat:", error);
+                chatWindow.innerHTML += `<div class="d-flex flex-row justify-content-start mb-4 ai-message"><div class="p-3 ms-3 bg-danger text-white" style="border-radius: 15px;"><p class="small mb-0">Desculpe, não consegui obter uma resposta. Verifique o console ou os logs do servidor.</p></div></div>`;
+                chatWindow.scrollTop = chatWindow.scrollHeight;
             });
         });
     }

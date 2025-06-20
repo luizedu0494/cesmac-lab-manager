@@ -5,19 +5,10 @@ if ('serviceWorker' in navigator) {
         .catch(err => console.log('Service Worker: Falha no registro.', err));
 }
 
-// --- LÓGICA DE NOTIFICAÇÃO DO NAVEGADOR (CORRIGIDA) ---
-
+// --- LÓGICA DE NOTIFICAÇÃO DO NAVEGADOR ---
 function verificarPermissaoNotificacao() {
-    // Só continua se o navegador suportar notificações
-    if (!("Notification" in window)) {
-        console.log("Este navegador não suporta notificações.");
-        return;
-    }
-
     const alerta = document.getElementById('alerta-notificacao');
-    // Se o alerta não existir na página atual (ex: login), não faz nada.
     if (!alerta) {
-        // Se a permissão já foi dada, inicia o "radar" de qualquer forma.
         if (Notification.permission === "granted") {
             iniciarVerificadorDeNotificacoes();
         }
@@ -27,7 +18,13 @@ function verificarPermissaoNotificacao() {
     const textoAlerta = document.getElementById('alerta-notificacao-texto');
     const btnAtivar = document.getElementById('btn-ativar-notificacoes');
 
-    // Função para atualizar a UI do alerta
+    if (!("Notification" in window)) {
+        textoAlerta.innerHTML = '<i class="bi bi-x-circle-fill me-2"></i> Este navegador não suporta notificações.';
+        btnAtivar.style.display = 'none';
+        alerta.style.display = 'flex';
+        return;
+    }
+
     function atualizarUI(permission) {
         if (permission === "granted") {
             alerta.style.display = 'none';
@@ -43,10 +40,9 @@ function verificarPermissaoNotificacao() {
         }
     }
 
-    // Listener do botão de ativação
     btnAtivar.addEventListener('click', () => {
         Notification.requestPermission().then(permission => {
-            atualizarUI(permission); // Atualiza a UI com a nova permissão
+            atualizarUI(permission);
             if (permission === "granted") {
                 new Notification("Obrigado!", {
                     body: "Você agora receberá notificações do sistema.",
@@ -56,10 +52,8 @@ function verificarPermissaoNotificacao() {
         });
     });
 
-    // Verifica e atualiza a UI quando a página carrega
     atualizarUI(Notification.permission);
 }
-
 
 let lastCheckTimestamp = new Date().toISOString();
 let notificationInterval = null;
@@ -89,7 +83,6 @@ function verificarNovasNotificacoes() {
 }
 
 function iniciarVerificadorDeNotificacoes() {
-    // Garante que só um "timer" rode por vez
     if (Notification.permission === "granted" && !notificationInterval) {
         console.log("Iniciando verificador de notificações...");
         verificarNovasNotificacoes(); 
@@ -100,9 +93,7 @@ function iniciarVerificadorDeNotificacoes() {
 
 document.addEventListener('DOMContentLoaded', function() {
     
-    // Chamada inicial da função de notificação
-    verificarPermissaoNotificacao();
-    
+    // --- LÓGICA GLOBAL (para todas as páginas) ---
     const themeToggle = document.getElementById('theme-toggle');
     if (themeToggle) {
         const currentTheme = localStorage.getItem('theme') || 'light';
@@ -129,6 +120,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // --- LÓGICA DA PÁGINA DE AJUDA/FAQ ---
     const faqSearch = document.getElementById('faq-search');
     if (faqSearch) {
         faqSearch.addEventListener('keyup', function() {
@@ -148,6 +140,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // --- LÓGICA DO GRÁFICO DO DASHBOARD ---
     const chartCanvas = document.getElementById('labChart');
     if (chartCanvas) {
         try {
@@ -187,6 +180,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // --- LÓGICA ESPECÍFICA DA PÁGINA DO CALENDÁRIO ---
     var calendarEl = document.getElementById('calendar');
     if (calendarEl) {
         
@@ -311,8 +305,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('infoAtribuicao').style.display = 'none';
                 document.getElementById('btnAprovar').style.display = 'none';
                 document.getElementById('btnRejeitar').style.display = 'none';
-                document.getElementById('btnSalvarAlteracoes').style.display = 'none';
-                document.getElementById('btnExcluir').style.display = 'none';
+                btnSalvarAlteracoes.style.display = 'none';
+                btnExcluir.style.display = 'none';
                 btnSalvar.style.display = 'block';
                 secaoManterDados.style.display = 'block';
                 
@@ -375,6 +369,42 @@ document.addEventListener('DOMContentLoaded', function() {
         window.calendar = calendar;
         calendar.render();
         
+        const fab = document.getElementById('fab-novo-agendamento');
+        if (fab) {
+            fab.addEventListener('click', function(e) {
+                e.preventDefault();
+                formAgendamento.reset();
+                document.getElementById('agendamento_id').value = '';
+                document.getElementById('modalLabel').textContent = 'Novo Agendamento Rápido';
+                
+                const today = new Date().toISOString().split('T')[0];
+                dataInput.value = today;
+                dataInput.readOnly = false;
+
+                const campos = [document.getElementById('titulo'), dataInput, document.getElementById('laboratorio'), document.getElementById('horario')];
+                campos.forEach(campo => campo.disabled = false);
+
+                document.getElementById('infoSolicitante').style.display = 'none';
+                document.getElementById('infoAtribuicao').style.display = 'none';
+                document.getElementById('btnAprovar').style.display = 'none';
+                document.getElementById('btnRejeitar').style.display = 'none';
+                btnSalvarAlteracoes.style.display = 'none';
+                btnExcluir.style.display = 'none';
+                btnSalvar.style.display = 'block';
+                secaoManterDados.style.display = 'block';
+
+                if (userRole === 'Coordenador') {
+                    secaoAtribuicao.style.display = 'block';
+                    radioAtribuirUser.checked = true;
+                    radioAtribuirUser.dispatchEvent(new Event('change'));
+                } else {
+                    secaoAtribuicao.style.display = 'none';
+                }
+                
+                modalAgendamento.show();
+            });
+        }
+        
         function atualizarLinkExportacao() {
             if (!btnExportar) return;
             const params = new URLSearchParams();
@@ -397,7 +427,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 calendar.addEventSource({ id: 'agendamentos', url: `/api/agendamentos?${params.toString()}` });
                 atualizarLinkExportacao();
             });
-
             btnLimparFiltros.addEventListener('click', function() {
                 filtroForm.reset();
                 filtroForm.dispatchEvent(new Event('submit'));
@@ -499,6 +528,46 @@ document.addEventListener('DOMContentLoaded', function() {
                     Swal.fire('Rejeitado!', data.message, 'warning');
                     calendar.refetchEvents();
                 }
+            });
+        });
+    }
+
+    const chatForm = document.getElementById('chat-form');
+    if (chatForm) {
+        const chatWindow = document.getElementById('chat-window');
+        const chatInput = document.getElementById('chat-input');
+        chatForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const userQuestion = chatInput.value.trim();
+            if (userQuestion === '') return;
+            chatWindow.innerHTML += `<div class="d-flex flex-row justify-content-end mb-4 user-message"><div class="p-3 me-3 border" style="border-radius: 15px;"><p class="small mb-0">${userQuestion}</p></div></div>`;
+            chatInput.value = '';
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            const thinkingId = 'thinking-' + Date.now();
+            chatWindow.innerHTML += `<div class="d-flex flex-row justify-content-start mb-4 ai-message" id="${thinkingId}"><div class="p-3 ms-3" style="border-radius: 15px; background-color: rgba(52, 58, 64, 0.1);"><p class="small mb-0"><i>Pensando...</i></p></div></div>`;
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+            fetch('/api/ajuda-chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ question: userQuestion })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const thinkingIndicator = document.getElementById(thinkingId);
+                if (thinkingIndicator) {
+                    thinkingIndicator.remove();
+                }
+                chatWindow.innerHTML += `<div class="d-flex flex-row justify-content-start mb-4 ai-message"><div class="p-3 ms-3" style="border-radius: 15px; background-color: rgba(52, 58, 64, 0.1);"><p class="small mb-0">${data.answer}</p></div></div>`;
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            })
+            .catch(error => {
+                const thinkingIndicator = document.getElementById(thinkingId);
+                if (thinkingIndicator) {
+                    thinkingIndicator.remove();
+                }
+                console.error("Erro no chat:", error);
+                chatWindow.innerHTML += `<div class="d-flex flex-row justify-content-start mb-4 ai-message"><div class="p-3 ms-3 bg-danger text-white" style="border-radius: 15px;"><p class="small mb-0">Desculpe, não consegui obter uma resposta. Verifique o console ou os logs do servidor.</p></div></div>`;
+                chatWindow.scrollTop = chatWindow.scrollHeight;
             });
         });
     }

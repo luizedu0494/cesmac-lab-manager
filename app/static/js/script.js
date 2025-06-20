@@ -5,71 +5,87 @@ if ('serviceWorker' in navigator) {
         .catch(err => console.log('Service Worker: Falha no registro.', err));
 }
 
-// --- LÓGICA DE NOTIFICAÇÃO DO NAVEGADOR ---
-function solicitarPermissaoDeNotificacao() {
-    if (!("Notification" in window)) {
-        console.log("Este navegador não suporta notificações.");
-        return;
-    }
-
-    if (Notification.permission === "granted") {
-        console.log("Permissão para notificações já concedida.");
-        iniciarVerificadorDeNotificacoes();
-    }
-    else if (Notification.permission !== "denied") {
-        Notification.requestPermission().then(function (permission) {
-            if (permission === "granted") {
-                console.log("Permissão para notificações concedida!");
-                new Notification("Obrigado!", {
-                    body: "Você agora receberá notificações do sistema.",
-                    icon: "/static/images/icon-192x192.png"
-                });
-                iniciarVerificadorDeNotificacoes();
-            }
-        });
-    }
-}
-
-let lastCheckTimestamp = new Date().toISOString();
-let notificationInterval = null;
-
-function verificarNovasNotificacoes() {
-    fetch(`/api/novas-notificacoes?since=${lastCheckTimestamp}`)
-        .then(response => response.json())
-        .then(notificacoes => {
-            if (notificacoes.length > 0) {
-                notificacoes.forEach(notif => {
-                    const notification = new Notification(notif.title, {
-                        body: notif.body,
-                        icon: '/static/images/icon-192x192.png'
-                    });
-                    notification.onclick = function() {
-                        window.focus();
-                        window.location.href = '/minhas-tarefas';
-                    };
-                });
-                if (window.calendar) {
-                    window.calendar.refetchEvents();
-                }
-            }
-            lastCheckTimestamp = new Date().toISOString();
-        })
-        .catch(err => console.error("Erro ao buscar notificações:", err));
-}
-
-function iniciarVerificadorDeNotificacoes() {
-    if (Notification.permission === "granted" && !notificationInterval) {
-        console.log("Iniciando verificador de notificações...");
-        verificarNovasNotificacoes(); 
-        notificationInterval = setInterval(verificarNovasNotificacoes, 30000);
-    }
-}
-
-// --- FIM DA LÓGICA DE NOTIFICAÇÃO ---
-
-
 document.addEventListener('DOMContentLoaded', function() {
     
+    // --- LÓGICA DE NOTIFICAÇÃO DO NAVEGADOR (POSIÇÃO CORRIGIDA) ---
+    function solicitarPermissaoDeNotificacao() {
+        const alerta = document.getElementById('alerta-notificacao');
+        if (!alerta) return; // Se o alerta não está na página, não faz nada
+
+        const textoAlerta = document.getElementById('alerta-notificacao-texto');
+        const btnAtivar = document.getElementById('btn-ativar-notificacoes');
+
+        if (!("Notification" in window)) {
+            textoAlerta.innerHTML = '<i class="bi bi-x-circle-fill me-2"></i> Este navegador não suporta notificações.';
+            btnAtivar.style.display = 'none';
+            alerta.style.display = 'flex';
+            return;
+        }
+
+        if (Notification.permission === "granted") {
+            alerta.style.display = 'none';
+            iniciarVerificadorDeNotificacoes();
+        } else if (Notification.permission === "denied") {
+            textoAlerta.innerHTML = '<i class="bi bi-bell-slash-fill me-2"></i> As notificações estão bloqueadas. Mude a configuração do seu navegador para recebê-las.';
+            btnAtivar.style.display = 'none';
+            alerta.style.display = 'flex';
+        } else { // "default"
+            alerta.style.display = 'flex';
+            btnAtivar.addEventListener('click', () => {
+                Notification.requestPermission().then(permission => {
+                    if (permission === "granted") {
+                        new Notification("Obrigado!", {
+                            body: "Você agora receberá notificações do sistema.",
+                            icon: "/static/images/icon-192x192.png"
+                        });
+                        alerta.style.display = 'none';
+                        iniciarVerificadorDeNotificacoes();
+                    }
+                });
+            });
+        }
+    }
+
+    let lastCheckTimestamp = new Date().toISOString();
+    let notificationInterval = null;
+
+    function verificarNovasNotificacoes() {
+        fetch(`/api/novas-notificacoes?since=${lastCheckTimestamp}`)
+            .then(response => response.json())
+            .then(notificacoes => {
+                if (notificacoes.length > 0) {
+                    notificacoes.forEach(notif => {
+                        const notification = new Notification(notif.title, {
+                            body: notif.body,
+                            icon: '/static/images/icon-192x192.png'
+                        });
+                        notification.onclick = function() {
+                            window.focus();
+                            window.location.href = '/minhas-tarefas';
+                        };
+                    });
+                    if (window.calendar) {
+                        window.calendar.refetchEvents();
+                    }
+                }
+                lastCheckTimestamp = new Date().toISOString();
+            })
+            .catch(err => console.error("Erro ao buscar notificações:", err));
+    }
+
+    function iniciarVerificadorDeNotificacoes() {
+        if (Notification.permission === "granted" && !notificationInterval) {
+            console.log("Iniciando verificador de notificações...");
+            verificarNovasNotificacoes(); 
+            notificationInterval = setInterval(verificarNovasNotificacoes, 30000);
+        }
+    }
+
+    // Chamada inicial da função de notificação
+    solicitarPermissaoDeNotificacao();
+    
+    // --- O RESTO DO CÓDIGO CONTINUA DAQUI PARA BAIXO ---
+
     const themeToggle = document.getElementById('theme-toggle');
     if (themeToggle) {
         const currentTheme = localStorage.getItem('theme') || 'light';
@@ -341,42 +357,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         window.calendar = calendar;
         calendar.render();
-        
-        const fab = document.getElementById('fab-novo-agendamento');
-        if (fab) {
-            fab.addEventListener('click', function(e) {
-                e.preventDefault();
-                formAgendamento.reset();
-                document.getElementById('agendamento_id').value = '';
-                document.getElementById('modalLabel').textContent = 'Novo Agendamento Rápido';
-                
-                const today = new Date().toISOString().split('T')[0];
-                dataInput.value = today;
-                dataInput.readOnly = false;
-
-                const campos = [document.getElementById('titulo'), dataInput, document.getElementById('laboratorio'), document.getElementById('horario')];
-                campos.forEach(campo => campo.disabled = false);
-
-                document.getElementById('infoSolicitante').style.display = 'none';
-                document.getElementById('infoAtribuicao').style.display = 'none';
-                document.getElementById('btnAprovar').style.display = 'none';
-                document.getElementById('btnRejeitar').style.display = 'none';
-                document.getElementById('btnSalvarAlteracoes').style.display = 'none';
-                document.getElementById('btnExcluir').style.display = 'none';
-                btnSalvar.style.display = 'block';
-                secaoManterDados.style.display = 'block';
-
-                if (userRole === 'Coordenador') {
-                    secaoAtribuicao.style.display = 'block';
-                    radioAtribuirUser.checked = true;
-                    radioAtribuirUser.dispatchEvent(new Event('change'));
-                } else {
-                    secaoAtribuicao.style.display = 'none';
-                }
-                
-                modalAgendamento.show();
-            });
-        }
         
         function atualizarLinkExportacao() {
             if (!btnExportar) return;

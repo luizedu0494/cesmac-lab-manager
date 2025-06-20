@@ -5,7 +5,8 @@ if ('serviceWorker' in navigator) {
         .catch(err => console.log('Service Worker: Falha no registro.', err));
 }
 
-// --- LÓGICA DE NOTIFICAÇÃO DO NAVEGADOR ---
+// --- LÓGICA DE NOTIFICAÇÃO DO NAVEGADOR (REFINADA) ---
+
 function verificarPermissaoNotificacao() {
     const alerta = document.getElementById('alerta-notificacao');
     if (!alerta) {
@@ -21,6 +22,8 @@ function verificarPermissaoNotificacao() {
     if (!("Notification" in window)) {
         textoAlerta.innerHTML = '<i class="bi bi-x-circle-fill me-2"></i> Este navegador não suporta notificações.';
         btnAtivar.style.display = 'none';
+        alerta.classList.remove('alert-info', 'alert-danger');
+        alerta.classList.add('alert-warning');
         alerta.style.display = 'flex';
         return;
     }
@@ -30,10 +33,14 @@ function verificarPermissaoNotificacao() {
             alerta.style.display = 'none';
             iniciarVerificadorDeNotificacoes();
         } else if (permission === "denied") {
+            alerta.classList.remove('alert-info');
+            alerta.classList.add('alert-danger');
             textoAlerta.innerHTML = '<i class="bi bi-bell-slash-fill me-2"></i> As notificações estão bloqueadas. Para ativá-las, mude as configurações do seu navegador.';
             btnAtivar.style.display = 'none';
             alerta.style.display = 'flex';
         } else { // 'default'
+            alerta.classList.remove('alert-danger');
+            alerta.classList.add('alert-info');
             textoAlerta.innerHTML = '<i class="bi bi-bell-fill me-2"></i> Para receber alertas em tempo real, ative as notificações do navegador.';
             btnAtivar.style.display = 'block';
             alerta.style.display = 'flex';
@@ -42,10 +49,10 @@ function verificarPermissaoNotificacao() {
 
     btnAtivar.addEventListener('click', () => {
         Notification.requestPermission().then(permission => {
-            atualizarUI(permission);
+            atualizarUI(permission); 
             if (permission === "granted") {
-                new Notification("Obrigado!", {
-                    body: "Você agora receberá notificações do sistema.",
+                new Notification("Obrigado por ativar!", {
+                    body: "Você agora receberá notificações importantes do sistema.",
                     icon: "/static/images/icon-192x192.png"
                 });
             }
@@ -54,6 +61,7 @@ function verificarPermissaoNotificacao() {
 
     atualizarUI(Notification.permission);
 }
+
 
 let lastCheckTimestamp = new Date().toISOString();
 let notificationInterval = null;
@@ -93,7 +101,8 @@ function iniciarVerificadorDeNotificacoes() {
 
 document.addEventListener('DOMContentLoaded', function() {
     
-    // --- LÓGICA GLOBAL (para todas as páginas) ---
+    verificarPermissaoNotificacao();
+    
     const themeToggle = document.getElementById('theme-toggle');
     if (themeToggle) {
         const currentTheme = localStorage.getItem('theme') || 'light';
@@ -120,7 +129,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // --- LÓGICA DA PÁGINA DE AJUDA/FAQ ---
     const faqSearch = document.getElementById('faq-search');
     if (faqSearch) {
         faqSearch.addEventListener('keyup', function() {
@@ -140,7 +148,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // --- LÓGICA DO GRÁFICO DO DASHBOARD ---
     const chartCanvas = document.getElementById('labChart');
     if (chartCanvas) {
         try {
@@ -180,7 +187,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // --- LÓGICA ESPECÍFICA DA PÁGINA DO CALENDÁRIO ---
     var calendarEl = document.getElementById('calendar');
     if (calendarEl) {
         
@@ -349,6 +355,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 btnExcluir.style.display = 'none';
                 
                 const podeEditar = (currentUserId === props.solicitante_id || userRole === 'Coordenador');
+                const campos = [document.getElementById('titulo'), document.getElementById('laboratorio'), document.getElementById('horario')];
+                campos.forEach(campo => campo.disabled = !podeEditar);
+
                 if (podeEditar) {
                     btnSalvarAlteracoes.style.display = 'block';
                     btnExcluir.style.display = 'block';
@@ -359,51 +368,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     document.getElementById('btnRejeitar').style.display = 'block';
                 } 
                 
-                const campos = [document.getElementById('titulo'), document.getElementById('laboratorio'), document.getElementById('horario')];
-                campos.forEach(campo => campo.disabled = !podeEditar);
-
                 modalAgendamento.show();
             }
         });
         
         window.calendar = calendar;
         calendar.render();
-        
-        const fab = document.getElementById('fab-novo-agendamento');
-        if (fab) {
-            fab.addEventListener('click', function(e) {
-                e.preventDefault();
-                formAgendamento.reset();
-                document.getElementById('agendamento_id').value = '';
-                document.getElementById('modalLabel').textContent = 'Novo Agendamento Rápido';
-                
-                const today = new Date().toISOString().split('T')[0];
-                dataInput.value = today;
-                dataInput.readOnly = false;
-
-                const campos = [document.getElementById('titulo'), dataInput, document.getElementById('laboratorio'), document.getElementById('horario')];
-                campos.forEach(campo => campo.disabled = false);
-
-                document.getElementById('infoSolicitante').style.display = 'none';
-                document.getElementById('infoAtribuicao').style.display = 'none';
-                document.getElementById('btnAprovar').style.display = 'none';
-                document.getElementById('btnRejeitar').style.display = 'none';
-                btnSalvarAlteracoes.style.display = 'none';
-                btnExcluir.style.display = 'none';
-                btnSalvar.style.display = 'block';
-                secaoManterDados.style.display = 'block';
-
-                if (userRole === 'Coordenador') {
-                    secaoAtribuicao.style.display = 'block';
-                    radioAtribuirUser.checked = true;
-                    radioAtribuirUser.dispatchEvent(new Event('change'));
-                } else {
-                    secaoAtribuicao.style.display = 'none';
-                }
-                
-                modalAgendamento.show();
-            });
-        }
         
         function atualizarLinkExportacao() {
             if (!btnExportar) return;
@@ -427,6 +397,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 calendar.addEventSource({ id: 'agendamentos', url: `/api/agendamentos?${params.toString()}` });
                 atualizarLinkExportacao();
             });
+
             btnLimparFiltros.addEventListener('click', function() {
                 filtroForm.reset();
                 filtroForm.dispatchEvent(new Event('submit'));

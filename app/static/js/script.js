@@ -5,87 +5,104 @@ if ('serviceWorker' in navigator) {
         .catch(err => console.log('Service Worker: Falha no registro.', err));
 }
 
-document.addEventListener('DOMContentLoaded', function() {
-    
-    // --- LÓGICA DE NOTIFICAÇÃO DO NAVEGADOR (POSIÇÃO CORRIGIDA) ---
-    function solicitarPermissaoDeNotificacao() {
-        const alerta = document.getElementById('alerta-notificacao');
-        if (!alerta) return; // Se o alerta não está na página, não faz nada
+// --- LÓGICA DE NOTIFICAÇÃO DO NAVEGADOR (CORRIGIDA) ---
 
-        const textoAlerta = document.getElementById('alerta-notificacao-texto');
-        const btnAtivar = document.getElementById('btn-ativar-notificacoes');
+function verificarPermissaoNotificacao() {
+    // Só continua se o navegador suportar notificações
+    if (!("Notification" in window)) {
+        console.log("Este navegador não suporta notificações.");
+        return;
+    }
 
-        if (!("Notification" in window)) {
-            textoAlerta.innerHTML = '<i class="bi bi-x-circle-fill me-2"></i> Este navegador não suporta notificações.';
-            btnAtivar.style.display = 'none';
-            alerta.style.display = 'flex';
-            return;
-        }
-
+    const alerta = document.getElementById('alerta-notificacao');
+    // Se o alerta não existir na página atual (ex: login), não faz nada.
+    if (!alerta) {
+        // Se a permissão já foi dada, inicia o "radar" de qualquer forma.
         if (Notification.permission === "granted") {
+            iniciarVerificadorDeNotificacoes();
+        }
+        return;
+    }
+
+    const textoAlerta = document.getElementById('alerta-notificacao-texto');
+    const btnAtivar = document.getElementById('btn-ativar-notificacoes');
+
+    // Função para atualizar a UI do alerta
+    function atualizarUI(permission) {
+        if (permission === "granted") {
             alerta.style.display = 'none';
             iniciarVerificadorDeNotificacoes();
-        } else if (Notification.permission === "denied") {
-            textoAlerta.innerHTML = '<i class="bi bi-bell-slash-fill me-2"></i> As notificações estão bloqueadas. Mude a configuração do seu navegador para recebê-las.';
+        } else if (permission === "denied") {
+            textoAlerta.innerHTML = '<i class="bi bi-bell-slash-fill me-2"></i> As notificações estão bloqueadas. Para ativá-las, mude as configurações do seu navegador.';
             btnAtivar.style.display = 'none';
             alerta.style.display = 'flex';
-        } else { // "default"
+        } else { // 'default'
+            textoAlerta.innerHTML = '<i class="bi bi-bell-fill me-2"></i> Para receber alertas em tempo real, ative as notificações do navegador.';
+            btnAtivar.style.display = 'block';
             alerta.style.display = 'flex';
-            btnAtivar.addEventListener('click', () => {
-                Notification.requestPermission().then(permission => {
-                    if (permission === "granted") {
-                        new Notification("Obrigado!", {
-                            body: "Você agora receberá notificações do sistema.",
-                            icon: "/static/images/icon-192x192.png"
-                        });
-                        alerta.style.display = 'none';
-                        iniciarVerificadorDeNotificacoes();
-                    }
+        }
+    }
+
+    // Listener do botão de ativação
+    btnAtivar.addEventListener('click', () => {
+        Notification.requestPermission().then(permission => {
+            atualizarUI(permission); // Atualiza a UI com a nova permissão
+            if (permission === "granted") {
+                new Notification("Obrigado!", {
+                    body: "Você agora receberá notificações do sistema.",
+                    icon: "/static/images/icon-192x192.png"
                 });
-            });
-        }
-    }
+            }
+        });
+    });
 
-    let lastCheckTimestamp = new Date().toISOString();
-    let notificationInterval = null;
+    // Verifica e atualiza a UI quando a página carrega
+    atualizarUI(Notification.permission);
+}
 
-    function verificarNovasNotificacoes() {
-        fetch(`/api/novas-notificacoes?since=${lastCheckTimestamp}`)
-            .then(response => response.json())
-            .then(notificacoes => {
-                if (notificacoes.length > 0) {
-                    notificacoes.forEach(notif => {
-                        const notification = new Notification(notif.title, {
-                            body: notif.body,
-                            icon: '/static/images/icon-192x192.png'
-                        });
-                        notification.onclick = function() {
-                            window.focus();
-                            window.location.href = '/minhas-tarefas';
-                        };
+
+let lastCheckTimestamp = new Date().toISOString();
+let notificationInterval = null;
+
+function verificarNovasNotificacoes() {
+    fetch(`/api/novas-notificacoes?since=${lastCheckTimestamp}`)
+        .then(response => response.json())
+        .then(notificacoes => {
+            if (notificacoes.length > 0) {
+                notificacoes.forEach(notif => {
+                    const notification = new Notification(notif.title, {
+                        body: notif.body,
+                        icon: '/static/images/icon-192x192.png'
                     });
-                    if (window.calendar) {
-                        window.calendar.refetchEvents();
-                    }
+                    notification.onclick = function() {
+                        window.focus();
+                        window.location.href = '/minhas-tarefas';
+                    };
+                });
+                if (window.calendar) {
+                    window.calendar.refetchEvents();
                 }
-                lastCheckTimestamp = new Date().toISOString();
-            })
-            .catch(err => console.error("Erro ao buscar notificações:", err));
-    }
+            }
+            lastCheckTimestamp = new Date().toISOString();
+        })
+        .catch(err => console.error("Erro ao buscar notificações:", err));
+}
 
-    function iniciarVerificadorDeNotificacoes() {
-        if (Notification.permission === "granted" && !notificationInterval) {
-            console.log("Iniciando verificador de notificações...");
-            verificarNovasNotificacoes(); 
-            notificationInterval = setInterval(verificarNovasNotificacoes, 30000);
-        }
+function iniciarVerificadorDeNotificacoes() {
+    // Garante que só um "timer" rode por vez
+    if (Notification.permission === "granted" && !notificationInterval) {
+        console.log("Iniciando verificador de notificações...");
+        verificarNovasNotificacoes(); 
+        notificationInterval = setInterval(verificarNovasNotificacoes, 30000);
     }
+}
 
-    // Chamada inicial da função de notificação
-    solicitarPermissaoDeNotificacao();
+
+document.addEventListener('DOMContentLoaded', function() {
     
-    // --- O RESTO DO CÓDIGO CONTINUA DAQUI PARA BAIXO ---
-
+    // Chamada inicial da função de notificação
+    verificarPermissaoNotificacao();
+    
     const themeToggle = document.getElementById('theme-toggle');
     if (themeToggle) {
         const currentTheme = localStorage.getItem('theme') || 'light';
@@ -482,46 +499,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     Swal.fire('Rejeitado!', data.message, 'warning');
                     calendar.refetchEvents();
                 }
-            });
-        });
-    }
-    
-    const chatForm = document.getElementById('chat-form');
-    if (chatForm) {
-        const chatWindow = document.getElementById('chat-window');
-        const chatInput = document.getElementById('chat-input');
-        chatForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const userQuestion = chatInput.value.trim();
-            if (userQuestion === '') return;
-            chatWindow.innerHTML += `<div class="d-flex flex-row justify-content-end mb-4 user-message"><div class="p-3 me-3 border" style="border-radius: 15px;"><p class="small mb-0">${userQuestion}</p></div></div>`;
-            chatInput.value = '';
-            chatWindow.scrollTop = chatWindow.scrollHeight;
-            const thinkingId = 'thinking-' + Date.now();
-            chatWindow.innerHTML += `<div class="d-flex flex-row justify-content-start mb-4 ai-message" id="${thinkingId}"><div class="p-3 ms-3" style="border-radius: 15px; background-color: rgba(52, 58, 64, 0.1);"><p class="small mb-0"><i>Pensando...</i></p></div></div>`;
-            chatWindow.scrollTop = chatWindow.scrollHeight;
-            fetch('/api/ajuda-chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ question: userQuestion })
-            })
-            .then(response => response.json())
-            .then(data => {
-                const thinkingIndicator = document.getElementById(thinkingId);
-                if (thinkingIndicator) {
-                    thinkingIndicator.remove();
-                }
-                chatWindow.innerHTML += `<div class="d-flex flex-row justify-content-start mb-4 ai-message"><div class="p-3 ms-3" style="border-radius: 15px; background-color: rgba(52, 58, 64, 0.1);"><p class="small mb-0">${data.answer}</p></div></div>`;
-                chatWindow.scrollTop = chatWindow.scrollHeight;
-            })
-            .catch(error => {
-                const thinkingIndicator = document.getElementById(thinkingId);
-                if (thinkingIndicator) {
-                    thinkingIndicator.remove();
-                }
-                console.error("Erro no chat:", error);
-                chatWindow.innerHTML += `<div class="d-flex flex-row justify-content-start mb-4 ai-message"><div class="p-3 ms-3 bg-danger text-white" style="border-radius: 15px;"><p class="small mb-0">Desculpe, não consegui obter uma resposta. Verifique o console ou os logs do servidor.</p></div></div>`;
-                chatWindow.scrollTop = chatWindow.scrollHeight;
             });
         });
     }

@@ -360,7 +360,6 @@ def deletar_grupo(grupo_id):
     flash(f'Grupo "{grupo.nome}" excluído com sucesso.', 'success')
     return redirect(url_for('main.gerenciar_grupos'))
 
-
 @main_bp.route('/agendamento/novo', methods=['POST'])
 def novo_agendamento():
     if g.user is None: return jsonify({'error': 'Não autorizado'}), 401
@@ -384,14 +383,12 @@ def novo_agendamento():
     grupo_id_atribuido = None
 
     if g.user.role == 'Coordenador':
-        if tipo_atribuicao == 'user':
-            user_id_str = dados.get('atribuido_user_id')
-            if user_id_str:
-                user_id_atribuido = int(user_id_str)
-        elif tipo_atribuicao == 'group':
-            grupo_id_str = dados.get('atribuido_grupo_id')
-            if grupo_id_str:
-                grupo_id_atribuido = int(grupo_id_str)
+        user_id_str = dados.get('atribuido_user_id')
+        if user_id_str:
+            user_id_atribuido = int(user_id_str)
+        grupo_id_str = dados.get('atribuido_grupo_id')
+        if grupo_id_str:
+            grupo_id_atribuido = int(grupo_id_str)
     else: 
         user_id_atribuido = g.user.id
     
@@ -410,6 +407,26 @@ def novo_agendamento():
     db.session.commit()
     
     return jsonify({'success': True, 'message': 'Agendamento solicitado com sucesso!'})
+
+@main_bp.route('/agendamento/aprovar/<int:agendamento_id>', methods=['POST'])
+def aprovar_agendamento(agendamento_id):
+    if g.user is None or g.user.role != 'Coordenador':
+        return jsonify({'success': False, 'message': 'Ação não permitida'}), 403
+    
+    agendamento = Agendamento.query.get_or_404(agendamento_id)
+    agendamento.status = 'Aprovada'
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'Agendamento aprovado!'})
+
+@main_bp.route('/agendamento/rejeitar/<int:agendamento_id>', methods=['POST'])
+def rejeitar_agendamento(agendamento_id):
+    if g.user is None or g.user.role != 'Coordenador':
+        return jsonify({'success': False, 'message': 'Ação não permitida'}), 403
+    
+    agendamento = Agendamento.query.get_or_404(agendamento_id)
+    agendamento.status = 'Rejeitada'
+    db.session.commit()
+    return jsonify({'success': True, 'message': 'Agendamento rejeitado.'})
 
 @main_bp.route('/agendamento/editar/<int:agendamento_id>', methods=['POST'])
 def editar_agendamento(agendamento_id):
@@ -658,7 +675,10 @@ def novas_notificacoes():
     notificacoes_finais = []
 
     if g.user.role == 'Coordenador':
-        novas_solicitacoes = query.filter_by(status='Pendente').all()
+        novas_solicitacoes = query.filter(
+            Agendamento.status == 'Pendente', 
+            Agendamento.solicitante_id != g.user.id
+        ).all()
         for a in novas_solicitacoes:
             notificacoes_finais.append({
                 'title': 'Nova Solicitação de Agendamento',

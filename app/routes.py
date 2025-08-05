@@ -361,6 +361,7 @@ def deletar_grupo(grupo_id):
     flash(f'Grupo "{grupo.nome}" excluído com sucesso.', 'success')
     return redirect(url_for('main.gerenciar_grupos'))
 
+
 @main_bp.route('/agendamento/novo', methods=['POST'])
 def novo_agendamento():
     if g.user is None: return jsonify({'error': 'Não autorizado'}), 401
@@ -439,6 +440,7 @@ def deletar_agendamento(agendamento_id):
     db.session.delete(agendamento)
     db.session.commit()
     return jsonify({'success': True, 'message': 'Agendamento excluído com sucesso!'})
+
 
 @main_bp.route('/importar', methods=['GET', 'POST'])
 def importar_agendamentos():
@@ -583,8 +585,11 @@ def api_agendamentos():
 
     texto = request.args.get('texto')
     if texto: query = query.filter(Agendamento.titulo.ilike(f'%{texto}%'))
-    lab_id = request.args.get('lab')
-    if lab_id: query = query.filter_by(laboratorio_id=lab_id)
+    
+    lab_ids = request.args.getlist('lab_ids')
+    if lab_ids:
+        query = query.filter(Agendamento.laboratorio_id.in_(lab_ids))
+
     status = request.args.get('status')
     if status: query = query.filter_by(status=status)
     agendamentos = query.order_by(Agendamento.data.asc()).all()
@@ -644,8 +649,11 @@ def exportar_relatorio():
     query = Agendamento.query.order_by(Agendamento.data.asc())
     texto = request.args.get('texto')
     if texto: query = query.filter(Agendamento.titulo.ilike(f'%{texto}%'))
-    lab_id = request.args.get('lab')
-    if lab_id: query = query.filter_by(laboratorio_id=lab_id)
+    
+    lab_ids = request.args.getlist('lab_ids')
+    if lab_ids:
+        query = query.filter(Agendamento.laboratorio_id.in_(lab_ids))
+        
     status = request.args.get('status')
     if status: query = query.filter_by(status=status)
     agendamentos_filtrados = query.all()

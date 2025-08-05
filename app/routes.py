@@ -217,7 +217,6 @@ def atualizar_perfil(user_id):
     
     return redirect(url_for('main.gerenciar_usuarios'))
 
-
 @main_bp.route('/recessos', methods=['GET', 'POST'])
 def gerenciar_recessos():
     if g.user is None or g.user.role != 'Coordenador':
@@ -386,9 +385,13 @@ def novo_agendamento():
 
     if g.user.role == 'Coordenador':
         if tipo_atribuicao == 'user':
-            user_id_atribuido = dados.get('atribuido_user_id')
+            user_id_str = dados.get('atribuido_user_id')
+            if user_id_str:
+                user_id_atribuido = int(user_id_str)
         elif tipo_atribuicao == 'group':
-            grupo_id_atribuido = dados.get('atribuido_grupo_id')
+            grupo_id_str = dados.get('atribuido_grupo_id')
+            if grupo_id_str:
+                grupo_id_atribuido = int(grupo_id_str)
     else: 
         user_id_atribuido = g.user.id
     
@@ -639,6 +642,44 @@ def api_recessos():
             dia = recesso.data_inicio + timedelta(days=i)
             eventos_recessos.append({'title': recesso.motivo, 'start': dia.isoformat(), 'display': 'background', 'color': '#6c757d'})
     return jsonify(eventos_recessos)
+
+@main_bp.route('/api/novas-notificacoes')
+def novas_notificacoes():
+    if g.user is None:
+        return jsonify([])
+
+    last_check_str = request.args.get('since')
+    if not last_check_str:
+        return jsonify([])
+    
+    last_check_dt = datetime.fromisoformat(last_check_str.replace('Z', '+00:00'))
+
+    query = Agendamento.query.filter(Agendamento.timestamp_criacao > last_check_dt)
+    notificacoes_finais = []
+
+    if g.user.role == 'Coordenador':
+        novas_solicitacoes = query.filter_by(status='Pendente').all()
+        for a in novas_solicitacoes:
+            notificacoes_finais.append({
+                'title': 'Nova Solicitação de Agendamento',
+                'body': f'{a.criador.display_name} solicitou "{a.titulo}" para o Lab {a.laboratorio_nome}.'
+            })
+
+    elif g.user.role == 'Técnico':
+        grupo_ids = [grupo.id for grupo in g.user.grupos]
+        novas_atribuicoes = query.filter(
+            or_(
+                Agendamento.user_id == g.user.id,
+                Agendamento.grupo_id.in_(grupo_ids)
+            )
+        ).all()
+        for a in novas_atribuicoes:
+            notificacoes_finais.append({
+                'title': 'Nova Tarefa Atribuída',
+                'body': f'Você foi atribuído à tarefa "{a.titulo}" no Lab {a.laboratorio_nome}.'
+            })
+
+    return jsonify(notificacoes_finais)
 
 @main_bp.route('/relatorio/exportar')
 def exportar_relatorio():

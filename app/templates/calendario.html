@@ -18,12 +18,23 @@
                 </div>
                 <div class="col-md-3">
                     <label for="filtro-lab" class="form-label">Laboratório</label>
-                    <select id="filtro-lab" class="form-select">
-                        <option value="" selected>Todos os Laboratórios</option>
-                        {% for lab in laboratorios %}
-                            <option value="{{ lab.id }}">{{ lab.name }}</option>
-                        {% endfor %}
-                    </select>
+                    <div class="dropdown">
+                        <button class="btn btn-secondary dropdown-toggle w-100" type="button" id="filtro-lab-btn" data-bs-toggle="dropdown" aria-expanded="false">
+                            Selecionar...
+                        </button>
+                        <ul class="dropdown-menu p-2" aria-labelledby="filtro-lab-btn" id="filtro-lab-lista" style="max-height: 200px; overflow-y: auto;">
+                            {% for lab in laboratorios %}
+                                <li class="px-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input filtro-lab-checkbox" type="checkbox" name="lab_ids" value="{{ lab.id }}" id="lab-{{ lab.id }}">
+                                        <label class="form-check-label" for="lab-{{ lab.id }}">
+                                            {{ lab.name }}
+                                        </label>
+                                    </div>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
                 </div>
                 <div class="col-md-2">
                     <label for="filtro-status" class="form-label">Status</label>
@@ -47,6 +58,11 @@
     
     <div id="calendar"></div>
 </div>
+
+<a href="#" id="fab-novo-agendamento" class="fab" title="Novo Agendamento">
+    <i class="bi bi-plus-lg"></i>
+</a>
+
 
 <div class="modal fade" id="modalAgendamento" tabindex="-1" aria-labelledby="modalLabel" aria-hidden="true">
     <div class="modal-dialog">

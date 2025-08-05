@@ -5,101 +5,7 @@ if ('serviceWorker' in navigator) {
         .catch(err => console.log('Service Worker: Falha no registro.', err));
 }
 
-function verificarPermissaoNotificacao() {
-    const alerta = document.getElementById('alerta-notificacao');
-    if (!alerta) {
-        if (Notification.permission === "granted") {
-            iniciarVerificadorDeNotificacoes();
-        }
-        return;
-    }
-
-    const textoAlerta = document.getElementById('alerta-notificacao-texto');
-    const btnAtivar = document.getElementById('btn-ativar-notificacoes');
-
-    if (!("Notification" in window)) {
-        textoAlerta.innerHTML = '<i class="bi bi-x-circle-fill me-2"></i> Este navegador não suporta notificações.';
-        btnAtivar.style.display = 'none';
-        alerta.classList.remove('alert-info', 'alert-danger');
-        alerta.classList.add('alert-warning');
-        alerta.style.display = 'flex';
-        return;
-    }
-
-    function atualizarUI(permission) {
-        if (permission === "granted") {
-            alerta.style.display = 'none';
-            iniciarVerificadorDeNotificacoes();
-        } else if (permission === "denied") {
-            alerta.classList.remove('alert-info');
-            alerta.classList.add('alert-danger');
-            textoAlerta.innerHTML = '<i class="bi bi-bell-slash-fill me-2"></i> As notificações estão bloqueadas. Para ativá-las, mude as configurações do seu navegador.';
-            btnAtivar.style.display = 'none';
-            alerta.style.display = 'flex';
-        } else { // 'default'
-            alerta.classList.remove('alert-danger');
-            alerta.classList.add('alert-info');
-            textoAlerta.innerHTML = '<i class="bi bi-bell-fill me-2"></i> Para receber alertas em tempo real, ative as notificações do navegador.';
-            btnAtivar.style.display = 'block';
-            alerta.style.display = 'flex';
-        }
-    }
-
-    btnAtivar.addEventListener('click', () => {
-        Notification.requestPermission().then(permission => {
-            atualizarUI(permission); 
-            if (permission === "granted") {
-                new Notification("Obrigado por ativar!", {
-                    body: "Você agora receberá notificações importantes do sistema.",
-                    icon: "/static/images/icon-192x192.png"
-                });
-            }
-        });
-    });
-
-    atualizarUI(Notification.permission);
-}
-
-
-let lastCheckTimestamp = new Date().toISOString();
-let notificationInterval = null;
-
-function verificarNovasNotificacoes() {
-    fetch(`/api/novas-notificacoes?since=${lastCheckTimestamp}`)
-        .then(response => response.json())
-        .then(notificacoes => {
-            if (notificacoes.length > 0) {
-                notificacoes.forEach(notif => {
-                    const notification = new Notification(notif.title, {
-                        body: notif.body,
-                        icon: '/static/images/icon-192x192.png'
-                    });
-                    notification.onclick = function() {
-                        window.focus();
-                        window.location.href = '/minhas-tarefas';
-                    };
-                });
-                if (window.calendar) {
-                    window.calendar.refetchEvents();
-                }
-            }
-            lastCheckTimestamp = new Date().toISOString();
-        })
-        .catch(err => console.error("Erro ao buscar notificações:", err));
-}
-
-function iniciarVerificadorDeNotificacoes() {
-    if (Notification.permission === "granted" && !notificationInterval) {
-        console.log("Iniciando verificador de notificações...");
-        verificarNovasNotificacoes(); 
-        notificationInterval = setInterval(verificarNovasNotificacoes, 30000);
-    }
-}
-
-
 document.addEventListener('DOMContentLoaded', function() {
-    
-    verificarPermissaoNotificacao();
     
     const themeToggle = document.getElementById('theme-toggle');
     if (themeToggle) {
@@ -145,7 +51,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
-    
+
     const chartCanvas = document.getElementById('labChart');
     if (chartCanvas) {
         try {
@@ -206,7 +112,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         const filtroForm = document.getElementById('filtroForm');
         const filtroTexto = document.getElementById('filtro-texto');
-        const filtroLab = document.getElementById('filtro-lab');
+        const filtroLabCheckboxes = document.querySelectorAll('.filtro-lab-checkbox');
         const filtroStatus = document.getElementById('filtro-status');
         const btnLimparFiltros = document.getElementById('btnLimparFiltros');
         const btnExportar = document.getElementById('btnExportar');
@@ -229,6 +135,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         modalAgendamentoEl.addEventListener('hidden.bs.modal', function () {
             formAgendamento.reset();
+            // Garante que os campos fiquem habilitados ao fechar
+            const campos = [document.getElementById('titulo'), dataInput, document.getElementById('laboratorio'), document.getElementById('horario')];
+            campos.forEach(campo => campo.disabled = false);
         });
 
         if (radioAtribuirUser) {
@@ -289,9 +198,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 dataInput.value = info.dateStr;
                 dataInput.readOnly = true;
                 
-                const campos = [document.getElementById('titulo'), dataInput, document.getElementById('laboratorio'), document.getElementById('horario')];
-                campos.forEach(campo => campo.disabled = false);
-
                 if (retainedData) {
                     document.getElementById('titulo').value = retainedData.titulo;
                     document.getElementById('laboratorio').value = retainedData.laboratorio;
@@ -373,14 +279,53 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        window.calendar = calendar;
         calendar.render();
+        
+        const fab = document.getElementById('fab-novo-agendamento');
+        if (fab) {
+            fab.addEventListener('click', function(e) {
+                e.preventDefault();
+                formAgendamento.reset();
+                document.getElementById('agendamento_id').value = '';
+                document.getElementById('modalLabel').textContent = 'Novo Agendamento Rápido';
+                
+                const today = new Date().toISOString().split('T')[0];
+                dataInput.value = today;
+                dataInput.readOnly = false;
+
+                const campos = [document.getElementById('titulo'), dataInput, document.getElementById('laboratorio'), document.getElementById('horario')];
+                campos.forEach(campo => campo.disabled = false);
+
+                document.getElementById('infoSolicitante').style.display = 'none';
+                document.getElementById('infoAtribuicao').style.display = 'none';
+                document.getElementById('btnAprovar').style.display = 'none';
+                document.getElementById('btnRejeitar').style.display = 'none';
+                btnSalvarAlteracoes.style.display = 'none';
+                btnExcluir.style.display = 'none';
+                btnSalvar.style.display = 'block';
+                secaoManterDados.style.display = 'block';
+
+                if (userRole === 'Coordenador') {
+                    secaoAtribuicao.style.display = 'block';
+                    radioAtribuirUser.checked = true;
+                    radioAtribuirUser.dispatchEvent(new Event('change'));
+                } else {
+                    secaoAtribuicao.style.display = 'none';
+                }
+                
+                modalAgendamento.show();
+            });
+        }
         
         function atualizarLinkExportacao() {
             if (!btnExportar) return;
             const params = new URLSearchParams();
             if (filtroTexto.value) params.append('texto', filtroTexto.value);
-            if (filtroLab.value) params.append('lab', filtroLab.value);
+            filtroLabCheckboxes.forEach(checkbox => {
+                if (checkbox.checked) {
+                    params.append('lab_ids', checkbox.value);
+                }
+            });
             if (filtroStatus.value) params.append('status', filtroStatus.value);
             btnExportar.href = `/relatorio/exportar?${params.toString()}`;
         }
@@ -393,7 +338,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (agendamentosSource) { agendamentosSource.remove(); }
                 const params = new URLSearchParams();
                 if (filtroTexto.value) params.append('texto', filtroTexto.value);
-                if (filtroLab.value) params.append('lab', filtroLab.value);
+                filtroLabCheckboxes.forEach(checkbox => {
+                    if (checkbox.checked) {
+                        params.append('lab_ids', checkbox.value);
+                    }
+                });
                 if (filtroStatus.value) params.append('status', filtroStatus.value);
                 calendar.addEventSource({ id: 'agendamentos', url: `/api/agendamentos?${params.toString()}` });
                 atualizarLinkExportacao();
@@ -401,7 +350,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
             btnLimparFiltros.addEventListener('click', function() {
                 filtroForm.reset();
+                filtroLabCheckboxes.forEach(checkbox => checkbox.checked = false);
                 filtroForm.dispatchEvent(new Event('submit'));
+            });
+
+            document.getElementById('filtro-lab-lista').addEventListener('click', function (e) {
+                e.stopPropagation();
             });
         }
 
